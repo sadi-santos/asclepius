@@ -1,0 +1,95 @@
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../../lib/api";
+import type { Appointment, Patient, Professional } from "../../types";
+
+export default function AppointmentsList(){
+  const qc = useQueryClient();
+  const { data: apps, isLoading } = useQuery({
+    queryKey: ["appointments"],
+    queryFn: async () => (await api.get<Appointment[]>("/appointments")).data,
+  });
+  const { data: patients } = useQuery({ queryKey: ["patients"], queryFn: async () => (await api.get<Patient[]>("/patients")).data });
+  const { data: profs } = useQuery({ queryKey: ["professionals"], queryFn: async () => (await api.get<Professional[]>("/professionals")).data });
+
+  const create = useMutation({
+    mutationFn: async (payload: Partial<Appointment>) => (await api.post("/appointments", payload)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointments"] })
+  });
+  const confirm = useMutation({
+    mutationFn: async (id: string) => (await api.post(`/appointments/${id}/confirm`, {})).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointments"] })
+  });
+  const complete = useMutation({
+    mutationFn: async (id: string) => (await api.post(`/appointments/${id}/complete`, { notes: "finalizado" })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointments"] })
+  });
+  const remove = useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/appointments/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointments"] })
+  });
+
+  const [form, setForm] = useState({ patientId: "", professionalId: "", type: "CONSULTATION", when: "" });
+  useEffect(()=>{ if(!form.when){ const d=new Date(Date.now()+36e5); setForm(f=>({...f, when: d.toISOString()})) } },[]);
+
+  if (isLoading) return <div>Carregando...</div>;
+
+  function nameOfPatient(id:string){ return patients?.find(p=>p.id===id)?.fullName || id }
+  function nameOfProfessional(id:string){ return profs?.find(p=>p.id===id)?.fullName || id }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Agendamentos</h2>
+
+      <form className="grid md:grid-cols-5 gap-2 items-end" onSubmit={e=>{e.preventDefault();create.mutate({ patientId: form.patientId, professionalId: form.professionalId, type: form.type as any, scheduledAt: form.when, reason: "Consulta" })}}>
+        <select className="border p-2" value={form.patientId} onChange={e=>setForm({...form, patientId: e.target.value})}>
+          <option value="">Paciente</option>
+          {patients?.map(p=> <option key={p.id} value={p.id}>{p.fullName}</option>)}
+        </select>
+        <select className="border p-2" value={form.professionalId} onChange={e=>setForm({...form, professionalId: e.target.value})}>
+          <option value="">Profissional</option>
+          {profs?.map(p=> <option key={p.id} value={p.id}>{p.fullName}</option>)}
+        </select>
+        <select className="border p-2" value={form.type} onChange={e=>setForm({...form, type: e.target.value})}>
+          <option value="CONSULTATION">Consulta</option>
+          <option value="TELEMEDICINE">Telemedicina</option>
+          <option value="EXAM">Exame</option>
+          <option value="RETURN">Retorno</option>
+        </select>
+        <input className="border p-2" value={form.when} onChange={e=>setForm({...form, when: e.target.value})} placeholder="YYYY-MM-DDTHH:mm:ssZ" />
+        <button className="bg-blue-600 text-white px-3 py-2 rounded" type="submit">Agendar</button>
+      </form>
+
+      <div className="overflow-x-auto border rounded">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-2 text-left">Paciente</th>
+              <th className="p-2 text-left">Profissional</th>
+              <th className="p-2 text-left">Quando</th>
+              <th className="p-2 text-left">Tipo</th>
+              <th className="p-2 text-left">Status</th>
+              <th className="p-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {apps?.map(a=> (
+              <tr key={a.id} className="border-t">
+                <td className="p-2">{nameOfPatient(a.patientId)}</td>
+                <td className="p-2">{nameOfProfessional(a.professionalId)}</td>
+                <td className="p-2">{a.scheduledAt}</td>
+                <td className="p-2">{a.type}</td>
+                <td className="p-2">{a.status}</td>
+                <td className="p-2 text-right space-x-2">
+                  <button className="text-blue-600" onClick={()=>confirm.mutate(a.id)}>Confirmar</button>
+                  <button className="text-green-600" onClick={()=>complete.mutate(a.id)}>Completar</button>
+                  <button className="text-red-600" onClick={()=>remove.mutate(a.id)}>Excluir</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

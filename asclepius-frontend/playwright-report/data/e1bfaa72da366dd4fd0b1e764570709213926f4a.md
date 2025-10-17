@@ -1,0 +1,86 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e8]:
+        - img [ref=e10]
+        - generic [ref=e12]:
+          - heading "Asclepius" [level=1] [ref=e13]
+          - paragraph [ref=e14]: SGHSS
+      - navigation [ref=e15]:
+        - link "Dashboard" [ref=e16] [cursor=pointer]:
+          - /url: /
+          - img [ref=e17]
+          - generic [ref=e20]: Dashboard
+        - link "Pacientes" [ref=e21] [cursor=pointer]:
+          - /url: /patients
+          - img [ref=e22]
+          - generic [ref=e27]: Pacientes
+        - link "Profissionais" [ref=e28] [cursor=pointer]:
+          - /url: /professionals
+          - img [ref=e29]
+          - generic [ref=e32]: Profissionais
+        - link "Agendamentos" [ref=e33] [cursor=pointer]:
+          - /url: /appointments
+          - img [ref=e34]
+          - generic [ref=e39]: Agendamentos
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - img [ref=e43]
+          - generic [ref=e46]:
+            - paragraph [ref=e47]: admin
+            - paragraph [ref=e48]: ADMIN
+        - button "Sair" [ref=e49]:
+          - img [ref=e50]
+          - generic [ref=e54]: Sair
+  - generic [ref=e55]:
+    - banner [ref=e56]:
+      - generic [ref=e58]:
+        - img [ref=e59]
+        - generic [ref=e61]: Online
+    - main [ref=e62]:
+      - generic [ref=e64]:
+        - generic [ref=e66]:
+          - heading "Novo Paciente" [level=1] [ref=e67]
+          - paragraph [ref=e68]: Cadastre um novo paciente
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - generic [ref=e72]: Nome completo *
+            - textbox [ref=e73]
+          - generic [ref=e74]:
+            - generic [ref=e75]: CPF *
+            - textbox "000.000.000-00" [ref=e76]
+          - generic [ref=e77]:
+            - generic [ref=e78]: Data de nascimento *
+            - textbox [ref=e79]
+          - generic [ref=e80]:
+            - generic [ref=e81]: E-mail
+            - textbox [ref=e82]
+          - generic [ref=e83]:
+            - generic [ref=e84]: Telefone
+            - textbox "(11) 90000-0000" [ref=e85]
+          - generic [ref=e86]:
+            - generic [ref=e87]: Tipo SanguÃneo
+            - textbox [ref=e88]
+          - generic [ref=e89]:
+            - generic [ref=e90]: Endereço
+            - textbox [ref=e91]
+          - generic [ref=e92]:
+            - generic [ref=e93]: Alergias
+            - textbox [ref=e94]
+          - generic [ref=e95]:
+            - generic [ref=e96]: Observações
+            - textbox [ref=e97]
+          - generic [ref=e98]:
+            - checkbox "Cadastro ativo" [checked] [ref=e99]
+            - generic [ref=e100]: Cadastro ativo
+          - generic [ref=e101]:
+            - button "Cancelar" [ref=e102]:
+              - img [ref=e103]
+              - text: Cancelar
+            - button "Criar" [ref=e106]:
+              - img [ref=e107]
+              - text: Criar
+```

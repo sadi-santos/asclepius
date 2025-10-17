@@ -1,0 +1,33 @@
+import { useEffect, useState } from "react";
+import { api } from "../lib/api";
+import type { User } from "../types";
+import type { LoginResponse } from "../types/api";
+import { AuthContext } from "./auth-context";
+
+export default function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser]   = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
+
+  useEffect(() => {
+    if (!token) return;
+    api.get<User>("/auth/me").then(r => setUser(r.data)).catch(() => logout());
+  }, [token]);
+
+  async function login(email: string, password: string) {
+    const r = await api.post<LoginResponse>("/auth/login", { email, password });
+    const t = r.data.token ?? r.data.access_token;
+    if (!t) throw new Error("Token ausente na resposta");
+    localStorage.setItem("token", t);
+    setToken(t);
+    const me = await api.get<User>("/auth/me");
+    setUser(me.data);
+  }
+
+  function logout() {
+    localStorage.removeItem("token");
+    setToken(null);
+    setUser(null);
+  }
+
+  return <AuthContext.Provider value={{ user, token, login, logout }}>{children}</AuthContext.Provider>;
+}

@@ -1,0 +1,95 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e8]:
+        - img [ref=e10]
+        - generic [ref=e12]:
+          - heading "Asclepius" [level=1] [ref=e13]
+          - paragraph [ref=e14]: SGHSS
+      - navigation [ref=e15]:
+        - link "Dashboard" [ref=e16]:
+          - /url: /
+          - img [ref=e17]
+          - generic [ref=e20]: Dashboard
+        - link "Pacientes" [ref=e21]:
+          - /url: /patients
+          - img [ref=e22]
+          - generic [ref=e27]: Pacientes
+        - link "Profissionais" [ref=e28]:
+          - /url: /professionals
+          - img [ref=e29]
+          - generic [ref=e32]: Profissionais
+        - link "Agendamentos" [ref=e33]:
+          - /url: /appointments
+          - img [ref=e34]
+          - generic [ref=e36]: Agendamentos
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - img [ref=e40]
+          - generic [ref=e43]:
+            - paragraph [ref=e44]: admin
+            - paragraph [ref=e45]: ADMIN
+        - button "Sair" [ref=e46]:
+          - img [ref=e47]
+          - generic [ref=e50]: Sair
+  - generic [ref=e51]:
+    - banner [ref=e52]:
+      - generic [ref=e54]:
+        - img [ref=e55]
+        - generic [ref=e57]: Online
+    - main [ref=e58]:
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - heading "Novo Profissional" [level=1] [ref=e63]
+            - paragraph [ref=e64]: Cadastre um novo profissional
+          - generic "Status do cadastro" [ref=e66]: Ativo
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - generic [ref=e70]: Nome completo *
+            - textbox [ref=e71]
+          - generic [ref=e72]:
+            - generic [ref=e73]: Função *
+            - combobox [ref=e74]:
+              - option "Médico(a)"
+              - option "Enfermeiro(a)"
+              - option "Equipe de apoio" [selected]
+          - generic [ref=e75]:
+            - generic [ref=e76]: Especialidade
+            - combobox [ref=e77]:
+              - option "Selecione…" [selected]
+              - option "Clínico Geral"
+              - option "Cardiologia"
+              - option "Dermatologia"
+              - option "Ginecologia"
+              - option "Neurologia"
+              - option "Oftalmologia"
+              - option "Ortopedia"
+              - option "Pediatria"
+              - option "Psiquiatria"
+              - option "Urologia"
+              - option "Fisioterapia"
+              - option "Enfermagem"
+          - generic [ref=e78]:
+            - generic [ref=e79]: Nº Registro (CRM/COREN…)
+            - textbox [ref=e80]
+          - generic [ref=e81]:
+            - generic [ref=e82]: E-mail
+            - textbox [ref=e83]
+          - generic [ref=e84]:
+            - generic [ref=e85]: Telefone
+            - textbox "(11) 90000-0000" [ref=e86]
+          - generic [ref=e87]:
+            - checkbox "Cadastro ativo" [checked] [ref=e88]
+            - generic [ref=e89]: Cadastro ativo
+          - generic [ref=e90]:
+            - button "Cancelar" [ref=e91]:
+              - img [ref=e92]
+              - text: Cancelar
+            - button "Criar" [ref=e95]:
+              - img [ref=e96]
+              - text: Criar
+```

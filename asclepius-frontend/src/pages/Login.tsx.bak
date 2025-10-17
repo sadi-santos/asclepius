@@ -1,0 +1,48 @@
+import type { FormEvent } from 'react';
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Hospital } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
+
+function getErrMsg(e: unknown): string {
+  if (typeof e === 'string') return e;
+  if (e && typeof e === 'object') {
+    const o = e as { message?: string; response?: { data?: { error?: string; message?: string } } };
+    return o.response?.data?.error ?? o.response?.data?.message ?? o.message ?? 'Falha no login';
+  }
+  return 'Falha no login';
+}
+
+export default function Login() {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('admin@vidaplus.com');
+  const [password, setPassword] = useState('VidaPlus@2025');
+  const [error, setError] = useState('');
+  const nav = useNavigate();
+  const loc = useLocation() as { state?: { from?: { pathname?: string } } };
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await login(email, password);
+      nav(loc.state?.from?.pathname || '/', { replace: true });
+    } catch (err) {
+      setError(getErrMsg(err));
+    }
+  }
+
+  return (
+    <div className='min-h-screen bg-gray-100 grid place-items-center p-4'>
+      <form onSubmit={onSubmit} className='bg-white w-full max-w-sm p-6 rounded-xl shadow border space-y-4'>
+        <div className='flex flex-col items-center gap-2'>
+          <div className='bg-blue-600 p-3 rounded-full'><Hospital className='w-7 h-7 text-white'/></div>
+          <h1 className='text-lg font-semibold'>Asclepius SGHSS</h1>
+        </div>
+        {error && <div className='text-red-600 text-sm'>{error}</div>}
+        <input className='w-full border rounded p-2' value={email} onChange={e=>setEmail(e.target.value)} type='email' placeholder='email' />
+        <input className='w-full border rounded p-2' value={password} onChange={e=>setPassword(e.target.value)} type='password' placeholder='senha' />
+        <button className='w-full bg-blue-600 text-white rounded p-2'>Entrar</button>
+      </form>
+    </div>
+  );
+}

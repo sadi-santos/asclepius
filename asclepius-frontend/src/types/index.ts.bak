@@ -1,0 +1,46 @@
+export type Role = "ADMIN" | "DOCTOR" | "NURSE" | "STAFF";
+
+export interface User {
+  id: string;
+  email: string;
+  role: Role;
+}
+
+export interface Patient {
+  id: string;
+  fullName: string;
+  cpf: string;
+  birthDate: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  bloodType?: string;
+  allergies?: string;
+  notes?: string;
+  isActive: boolean;
+}
+
+export interface Professional {
+  id: string;
+  fullName: string;
+  role: string;
+  specialty?: string;
+  licenseNumber?: string;
+  email?: string;
+  phone?: string;
+  isActive: boolean;
+}
+
+export type AppointmentStatus = "SCHEDULED" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+export type AppointmentType = "CONSULTATION" | "TELEMEDICINE" | "EXAM" | "RETURN";
+
+export interface Appointment {
+  id: string;
+  patientId: string;
+  professionalId: string;
+  scheduledAt: string;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  reason?: string;
+  notes?: string;
+}

@@ -1,0 +1,642 @@
+﻿=== BUNDLE BACKEND/FRONT ===
+generatedAt: 2025-10-14T23:16:57.9886470-03:00
+backendRoot: C:\Projetos\VidaPlus\asclepius-backend
+frontendRoot: C:\Projetos\VidaPlus\asclepius-frontend
+files:
+- MISSING  C:\Projetos\VidaPlus\asclepius-backend\src\middleware\errorHandler.ts  
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\middleware\errorHandler.ts
+```
+# MISSING
+```
+-----8<------ FILE END ------
+
+- MISSING  C:\Projetos\VidaPlus\asclepius-backend\src\middleware\transform.ts  
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\middleware\transform.ts
+```
+# MISSING
+```
+-----8<------ FILE END ------
+
+- MISSING  C:\Projetos\VidaPlus\asclepius-backend\src\schemas\patient.ts  
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\schemas\patient.ts
+```
+# MISSING
+```
+-----8<------ FILE END ------
+
+- MISSING  C:\Projetos\VidaPlus\asclepius-backend\src\controllers\patients.ts  
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\controllers\patients.ts
+```
+# MISSING
+```
+-----8<------ FILE END ------
+
+- OK  C:\Projetos\VidaPlus\asclepius-backend\src\routes\patients.routes.ts  9B43601C527167998C035DD6F793BBD9A033F1B4AC78B27E341358445924AF41
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\routes\patients.routes.ts
+```
+import { Router } from 'express';
+import { prisma } from '../config/prisma';
+import { auth, requireRole } from '../middlewares/auth';
+import { validate } from '../middlewares/validate';
+import { auditLog } from '../services/audit';
+import { createPatientSchema, updatePatientSchema } from '../validators/patient';
+
+const router = Router();
+router.use(auth);
+
+// LISTAR (com filtros/paginação)
+router.get('/', async (req, res) => {
+  const page = Math.max(parseInt(String(req.query.page ?? '1'), 10), 1);
+  const size = Math.min(Math.max(parseInt(String(req.query.size ?? '20'), 10), 1), 100);
+
+  const where: any = {};
+  if (req.query.q) where.full_name = { contains: String(req.query.q), mode: 'insensitive' };
+  if (req.query.cpf) where.cpf = String(req.query.cpf);
+  if (req.query.is_active !== undefined) where.is_active = String(req.query.is_active).toLowerCase() === 'true';
+
+  const [items, total] = await Promise.all([
+    prisma.patient.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * size,
+      take: size,
+    }),
+    prisma.patient.count({ where }),
+  ]);
+
+  res.json({
+    page,
+    size,
+    total,
+    totalPages: Math.ceil(total / size),
+    items,
+  });
+});
+
+// DETALHE
+router.get('/:id', async (req, res) => {
+  const patient = await prisma.patient.findUnique({ where: { id: req.params.id } });
+  if (!patient) return res.status(404).json({ error: 'not_found' });
+  res.json(patient);
+});
+
+// CRIAR
+router.post(
+  '/',
+  requireRole('ADMIN', 'NURSE', 'DOCTOR'),
+  validate(createPatientSchema),
+  async (req, res) => {
+    const patient = await prisma.patient.create({
+      data: {
+        full_name: req.body.full_name,
+        cpf: req.body.cpf,
+        birth_date: new Date(req.body.birth_date),
+        email: req.body.email ?? null,
+        phone: req.body.phone ?? null,
+        address: req.body.address ?? null,
+        blood_type: req.body.blood_type ?? null,
+        allergies: req.body.allergies ?? null,
+        notes: req.body.notes ?? null,
+        is_active: req.body.is_active ?? true,
+      },
+    });
+
+    await auditLog({
+      action: 'CREATE_PATIENT',
+      entity: 'Patient',
+      userId: req.user!.id,
+      entityId: patient.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
+    res.status(201).json(patient);
+  }
+);
+
+// ATUALIZAR (PUT – completo)
+router.put(
+  '/:id',
+  requireRole('ADMIN', 'NURSE', 'DOCTOR'),
+  validate(createPatientSchema),
+  async (req, res) => {
+    const exists = await prisma.patient.findUnique({ where: { id: req.params.id } });
+    if (!exists) return res.status(404).json({ error: 'not_found' });
+
+    const patient = await prisma.patient.update({
+      where: { id: req.params.id },
+      data: {
+        full_name: req.body.full_name,
+        cpf: req.body.cpf,
+        birth_date: new Date(req.body.birth_date),
+        email: req.body.email ?? null,
+        phone: req.body.phone ?? null,
+        address: req.body.address ?? null,
+        blood_type: req.body.blood_type ?? null,
+        allergies: req.body.allergies ?? null,
+        notes: req.body.notes ?? null,
+        is_active: req.body.is_active ?? true,
+        updated_at: new Date(),
+      },
+    });
+
+    await auditLog({
+      action: 'UPDATE_PATIENT',
+      entity: 'Patient',
+      userId: req.user!.id,
+      entityId: patient.id,
+      details: JSON.stringify(req.body),
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
+    res.json(patient);
+  }
+);
+
+// ATUALIZAR (PATCH – parcial)
+router.patch(
+  '/:id',
+  requireRole('ADMIN', 'NURSE', 'DOCTOR'),
+  validate(updatePatientSchema),
+  async (req, res) => {
+    const exists = await prisma.patient.findUnique({ where: { id: req.params.id } });
+    if (!exists) return res.status(404).json({ error: 'not_found' });
+
+    const data: any = { updated_at: new Date() };
+    for (const k of [
+      'full_name','cpf','email','phone','address','blood_type','allergies','notes','is_active',
+    ]) {
+      if (req.body[k] !== undefined) data[k] = req.body[k];
+    }
+    if (req.body.birth_date) data.birth_date = new Date(req.body.birth_date);
+
+    const patient = await prisma.patient.update({ where: { id: req.params.id }, data });
+
+    await auditLog({
+      action: 'PATCH_PATIENT',
+      entity: 'Patient',
+      userId: req.user!.id,
+      entityId: patient.id,
+      details: JSON.stringify(req.body),
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
+
+    res.json(patient);
+  }
+);
+
+// EXCLUIR (soft por padrão; hard via ?hard=true)
+router.delete('/:id', requireRole('ADMIN'), async (req, res) => {
+  const hard = String(req.query.hard ?? 'false').toLowerCase() === 'true';
+
+  const exists = await prisma.patient.findUnique({ where: { id: req.params.id } });
+  if (!exists) return res.status(404).json({ error: 'not_found' });
+
+  if (hard) {
+    await prisma.patient.delete({ where: { id: req.params.id } });
+  } else {
+    await prisma.patient.update({
+      where: { id: req.params.id },
+      data: { is_active: false, updated_at: new Date() },
+    });
+  }
+
+  await auditLog({
+    action: hard ? 'DELETE_PATIENT_HARD' : 'DELETE_PATIENT_SOFT',
+    entity: 'Patient',
+    userId: req.user!.id,
+    entityId: req.params.id,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'] as string | undefined,
+  });
+
+  res.status(204).send();
+});
+
+export default router;
+
+```
+-----8<------ FILE END ------
+
+- MISSING  C:\Projetos\VidaPlus\asclepius-backend\src\routes\index.ts  
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\routes\index.ts
+```
+# MISSING
+```
+-----8<------ FILE END ------
+
+- MISSING  C:\Projetos\VidaPlus\asclepius-backend\src\lib\prisma.ts  
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\lib\prisma.ts
+```
+# MISSING
+```
+-----8<------ FILE END ------
+
+- OK  C:\Projetos\VidaPlus\asclepius-backend\src\app.ts  BE41D41F9952C5A438E38CD0122C2A27208569317313F798596505E68F98052D
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\app.ts
+```
+// src/app.ts
+import 'express-async-errors';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+
+import { env } from './config/env';
+import { errorHandler } from './middlewares/error';
+import { acceptCamelOnRequest, respondCamelOnJson } from './middlewares/case-mapping';
+import { normalizeIsoDates } from './middlewares/iso-dates';
+import { openapiSpec } from './docs/openapi';
+
+import authRoutes from './routes/auth.routes';
+import patientRoutes from './routes/patients.routes';
+import professionalRoutes from './routes/professionals.routes';
+import appointmentRoutes from './routes/appointments.routes';
+
+export const app = express();
+
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+// Segurança e CORS
+app.use(helmet());
+app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+
+// Rate limit (sem limite em dev)
+app.use(
+  rateLimit({
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    max: env.RATE_LIMIT_MAX,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => env.NODE_ENV === 'development',
+  })
+);
+
+// Body parsers
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Logger dev
+if (env.NODE_ENV === 'development') app.use(morgan('dev'));
+
+// Contrato de chaves e datas
+if (env.REQUEST_ACCEPT_CAMEL) app.use(acceptCamelOnRequest());
+app.use(normalizeIsoDates());
+if (env.RESPONSE_USE_CAMEL) app.use(respondCamelOnJson());
+
+// Healthcheck
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'Asclepius SGHSS',
+    version: '1.0.0',
+    environment: env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Swagger em desenvolvimento
+if (env.NODE_ENV === 'development') {
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, { explorer: true }));
+  app.get('/openapi.json', (_req, res) => res.json(openapiSpec));
+}
+
+// Rotas
+app.use('/auth', authRoutes);
+app.use('/patients', patientRoutes);
+app.use('/professionals', professionalRoutes);
+app.use('/appointments', appointmentRoutes);
+
+// 404
+app.use((req, res) => {
+  res.status(404).json({ error: 'not_found', message: 'Endpoint não encontrado', path: req.path });
+});
+
+// Handler de erros
+app.use(errorHandler);
+
+```
+-----8<------ FILE END ------
+
+- OK  C:\Projetos\VidaPlus\asclepius-backend\src\server.ts  2D89724288796321D54F6825B1B7D2553500D86CE6E91A9F7BB52B14B337CBAC
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\src\server.ts
+```
+import { app } from './app';
+import { env } from './config/env';
+
+const PORT = env.PORT;
+
+app.listen(PORT, () => {
+  console.log('');
+  console.log('==============================================');
+  console.log('ASCLEPIUS SGHSS - Sistema de Gestão Hospitalar');
+  console.log('==============================================');
+  console.log('');
+  console.log(`Servidor: http://localhost:${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Ambiente: ${env.NODE_ENV}`);
+  console.log('');
+  console.log('Endpoints principais:');
+  console.log('POST   /auth/login');
+  console.log('GET    /auth/me');
+  console.log('GET    /patients');
+  console.log('POST   /patients');
+  console.log('GET    /professionals');
+  console.log('POST   /appointments');
+  console.log('');
+  console.log('==============================================');
+  console.log('');
+});
+
+```
+-----8<------ FILE END ------
+
+- OK  C:\Projetos\VidaPlus\asclepius-backend\..\asclepius-frontend\src\pages\patients\PatientForm.tsx  3BE9D9C6F7E9561992E0629C6A9BC9F5102A8F7ABA786CEF94699FE855B2F137
+-----8<----- FILE START -----
+PATH: C:\Projetos\VidaPlus\asclepius-backend\..\asclepius-frontend\src\pages\patients\PatientForm.tsx
+```
+import { useEffect, useMemo, useState, type FormEvent, type ChangeEvent } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, getErrorMessage } from "../../lib/api";
+import type { Patient } from "../../types";
+import { Loader2, Save, X } from "lucide-react";
+import { validateCPF, onlyDigits, formatCPFView }  from "@/utils/cpf";
+
+type FormModel = Omit<Patient, "id" | "cpf" | "birthDate"> & {
+  id?: string;
+  cpf: string;       // apenas dígitos
+  birthDate: string; // yyyy-MM-dd
+};
+
+export default function PatientForm() {
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  const { data: current, isFetching } = useQuery({
+    queryKey: ["patients", id],
+    queryFn: async () => (await api.get<Patient>(`/patients/${id}`)).data,
+    enabled: isEdit,
+  });
+
+  const initial: FormModel = useMemo(
+    () =>
+      current
+        ? {
+            id: current.id,
+            fullName: current.fullName || "",
+            cpf: onlyDigits(current.cpf || ""),
+            birthDate: current.birthDate ? new Date(current.birthDate).toISOString().slice(0, 10) : "",
+            email: current.email || "",
+            phone: current.phone || "",
+            address: current.address || "",
+            bloodType: current.bloodType || "",
+            allergies: current.allergies || "",
+            notes: current.notes || "",
+            isActive: current.isActive ?? true,
+          }
+        : {
+            fullName: "",
+            cpf: "",
+            birthDate: "",
+            email: "",
+            phone: "",
+            address: "",
+            bloodType: "",
+            allergies: "",
+            notes: "",
+            isActive: true,
+          },
+    [current]
+  );
+
+  const [form, setForm] = useState<FormModel>(initial);
+  const [cpfError, setCpfError] = useState<string>("");
+
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, ...initial, cpf: onlyDigits(initial.cpf) }));
+    setCpfError("");
+  }, [initial]);
+
+  const save = useMutation({
+    mutationFn: async (payload: FormModel) => {
+      const body: Patient = {
+        ...(payload as any),
+        id: payload.id || "",
+        cpf: onlyDigits(payload.cpf),
+        birthDate: payload.birthDate
+          ? new Date(new Date(payload.birthDate).getTime() - new Date().getTimezoneOffset() * 60000).toISOString()
+          : new Date().toISOString(),
+      };
+      return payload.id
+        ? (await api.put<Patient>(`/patients/${payload.id}`, body)).data
+        : (await api.post<Patient>(`/patients`, body)).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["patients"] });
+      navigate("/patients");
+    },
+    onError: (e) => alert(getErrorMessage(e)),
+  });
+
+  const onChange =
+    (field: keyof FormModel) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const value =
+        (e.target as HTMLInputElement).type === "checkbox"
+          ? (e.target as HTMLInputElement).checked
+          : e.target.value;
+      setForm((f) => ({
+        ...f,
+        [field]: field === "cpf" ? onlyDigits(String(value)).slice(0, 11) : String(value),
+      }));
+      if (field === "cpf") setCpfError("");
+    };
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const cpfDigits = onlyDigits(form.cpf);
+    if (!validateCPF(cpfDigits)) {
+      setCpfError("CPF inválido");
+      return;
+    }
+    save.mutate({ ...form, cpf: cpfDigits });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{isEdit ? "Editar Paciente" : "Novo Paciente"}</h1>
+          <p className="text-sm text-gray-600">
+            {isEdit ? "Atualize os dados do paciente" : "Cadastre um novo paciente"}
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">Nome completo *</label>
+            <input
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={form.fullName}
+              onChange={onChange("fullName")}
+              required
+              maxLength={120}
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="cpf" className="block text-sm mb-1">CPF *</label>
+            <input
+              id="cpf"
+              className={`w-full border rounded-lg px-3 py-2 ${cpfError ? "border-red-400" : "border-gray-300"}`}
+              value={formatCPFView(form.cpf)}
+              onChange={onChange("cpf")}
+              inputMode="numeric"
+              placeholder="000.000.000-00"
+              required
+              disabled={save.isPending || isFetching}
+            />
+            {cpfError && <p className="text-xs text-red-600 mt-1">{cpfError}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Data de nascimento *</label>
+            <input
+              type="date"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={form.birthDate}
+              onChange={onChange("birthDate")}
+              required
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">E-mail</label>
+            <input
+              type="email"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={form.email}
+              onChange={onChange("email")}
+              maxLength={120}
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Telefone</label>
+            <input
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={form.phone}
+              onChange={onChange("phone")}
+              placeholder="(11) 90000-0000"
+              maxLength={20}
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Tipo Sanguíneo</label>
+            <input
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={form.bloodType}
+              onChange={onChange("bloodType")}
+              maxLength={3}
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">Endereço</label>
+            <input
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={form.address}
+              onChange={onChange("address")}
+              maxLength={200}
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">Alergias</label>
+            <input
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={form.allergies}
+              onChange={onChange("allergies")}
+              maxLength={200}
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">Observações</label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              rows={3}
+              value={form.notes}
+              onChange={onChange("notes")}
+              maxLength={500}
+              disabled={save.isPending || isFetching}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              id="isActive"
+              type="checkbox"
+              className="h-4 w-4"
+              checked={form.isActive}
+              onChange={onChange("isActive")}
+              disabled={save.isPending || isFetching}
+            />
+            <label htmlFor="isActive" className="text-sm">Cadastro ativo</label>
+          </div>
+
+          <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+            <button
+              type="button"
+              onClick={() => navigate("/patients")}
+              className="px-4 py-2 border border-gray-300 rounded-lg inline-flex items-center gap-2"
+              disabled={save.isPending}
+            >
+              <X size={16} /> Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg inline-flex items-center gap-2 hover:bg-blue-700 disabled:opacity-60"
+              disabled={save.isPending}
+              title="Salvar"
+            >
+              {save.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              {isEdit ? "Salvar" : "Criar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+```
+-----8<------ FILE END ------
+

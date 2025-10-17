@@ -1,0 +1,97 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e8]:
+        - img [ref=e10]
+        - generic [ref=e12]:
+          - heading "Asclepius" [level=1] [ref=e13]
+          - paragraph [ref=e14]: SGHSS
+      - navigation [ref=e15]:
+        - link "Dashboard" [ref=e16]:
+          - /url: /
+          - img [ref=e17]
+          - generic [ref=e20]: Dashboard
+        - link "Pacientes" [ref=e21]:
+          - /url: /patients
+          - img [ref=e22]
+          - generic [ref=e27]: Pacientes
+        - link "Profissionais" [ref=e28]:
+          - /url: /professionals
+          - img [ref=e29]
+          - generic [ref=e32]: Profissionais
+        - link "Agendamentos" [ref=e33]:
+          - /url: /appointments
+          - img [ref=e34]
+          - generic [ref=e36]: Agendamentos
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - img [ref=e40]
+          - generic [ref=e43]:
+            - paragraph [ref=e44]: admin
+            - paragraph [ref=e45]: ADMIN
+        - button "Sair" [ref=e46]:
+          - img [ref=e47]
+          - generic [ref=e50]: Sair
+  - generic [ref=e51]:
+    - banner [ref=e52]:
+      - generic [ref=e54]:
+        - img [ref=e55]
+        - generic [ref=e57]: Online
+    - main [ref=e58]:
+      - generic [ref=e60]:
+        - heading "Novo Agendamento" [level=1] [ref=e61]
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - generic [ref=e64]: Paciente *
+            - combobox [ref=e65]:
+              - option "Selecioneâ€¦" [selected]
+              - option "PACIENTE TESTE"
+              - option "Paciente Teste 2025-10-11T00:23:02"
+              - option "Paciente Teste 2025-10-11T00:19:05"
+              - option "Paciente Teste 2025-10-11T00:12:25"
+              - option "Paciente Teste 2025-10-10T23:51:42"
+              - option "Paciente Teste 2025-10-10T23:48:59"
+              - option "Paciente Teste 2025-10-10T23:34:00"
+              - option "Paciente Teste 2025-10-10T23:30:13"
+              - option "Paciente Teste 2025-10-10T23:29:44"
+              - option "Paciente Teste 2025-10-10T23:26:13"
+          - generic [ref=e66]:
+            - generic [ref=e67]: Profissional *
+            - combobox [ref=e68]:
+              - option "Selecioneâ€¦" [selected]
+              - option "Dino da Silva Sauro"
+              - option "Agulhino da Silva"
+              - option "Prof Teste 2025-10-11T00:19:07"
+              - option "Prof Teste 2025-10-11T00:12:28"
+          - generic [ref=e69]:
+            - generic [ref=e70]: Data/Hora *
+            - textbox [ref=e71]: 2025-10-13T23:46
+          - generic [ref=e72]:
+            - generic [ref=e73]: Tipo *
+            - combobox [ref=e74]:
+              - option "Consulta" [selected]
+              - option "Telemedicina"
+              - option "Exame"
+              - option "Retorno"
+          - generic [ref=e75]:
+            - generic [ref=e76]: Status *
+            - combobox [ref=e77]:
+              - option "Agendado" [selected]
+              - option "Confirmado"
+              - option "ConcluÃdo"
+              - option "Cancelado"
+              - option "Falta"
+          - generic [ref=e78]:
+            - generic [ref=e79]: Motivo/Notas
+            - textbox [ref=e80]
+        - generic [ref=e81]:
+          - button "Cancelar" [ref=e82]:
+            - img [ref=e83]
+            - text: Cancelar
+          - button "Criar agendamento" [ref=e86]:
+            - img [ref=e87]
+            - text: Criar agendamento
+```

@@ -1,0 +1,51 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../../lib/api";
+import type { Professional } from "../../types";
+
+export default function ProfessionalsList(){
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["professionals"],
+    queryFn: async () => (await api.get<Professional[]>("/professionals")).data,
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/professionals/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["professionals"] })
+  });
+
+  if (isLoading) return <div>Carregando...</div>;
+  if (error) return <div>Erro ao listar</div>;
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Profissionais</h2>
+      <div className="overflow-x-auto border rounded">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-2 text-left">Nome</th>
+              <th className="p-2 text-left">Função</th>
+              <th className="p-2 text-left">CR/CRM</th>
+              <th className="p-2 text-left">Email</th>
+              <th className="p-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data!.map(p => (
+              <tr key={p.id} className="border-t">
+                <td className="p-2">{p.fullName}</td>
+                <td className="p-2">{p.role}</td>
+                <td className="p-2">{p.licenseNumber}</td>
+                <td className="p-2">{p.email}</td>
+                <td className="p-2 text-right">
+                  <button className="text-red-600" onClick={()=>del.mutate(p.id)}>Excluir</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

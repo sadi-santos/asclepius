@@ -1,0 +1,12 @@
+﻿{
+  "recommendations": [
+    "Prisma.prisma",
+    "dbaeumer.vscode-eslint",
+    "rvest.vs-code-prettier-eslint",
+    "humao.rest-client",
+    "rangav.vscode-thunder-client",
+    "alexcvzz.vscode-sqlite",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-sqlite"
+  ]
+}

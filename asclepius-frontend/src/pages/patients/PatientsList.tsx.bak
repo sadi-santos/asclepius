@@ -1,0 +1,55 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { api } from "../../lib/api";
+import type { Patient } from "../../types";
+
+export default function PatientsList(){
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["patients"],
+    queryFn: async () => (await api.get<Patient[]>("/patients")).data,
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/patients/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["patients"] })
+  });
+
+  if (isLoading) return <div>Carregando...</div>;
+  if (error) return <div>Erro ao listar</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Pacientes</h2>
+        <Link to="/patients/new" className="bg-blue-600 text-white px-3 py-2 rounded">Novo</Link>
+      </div>
+
+      <div className="overflow-x-auto border rounded">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-2 text-left">Nome</th>
+              <th className="p-2 text-left">CPF</th>
+              <th className="p-2 text-left">Email</th>
+              <th className="p-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data!.map(p => (
+              <tr key={p.id} className="border-t">
+                <td className="p-2">{p.fullName}</td>
+                <td className="p-2">{p.cpf}</td>
+                <td className="p-2">{p.email}</td>
+                <td className="p-2 text-right space-x-2">
+                  <Link className="text-blue-600" to={`/patients/${p.id}/edit`}>Editar</Link>
+                  <button className="text-red-600" onClick={() => del.mutate(p.id)}>Excluir</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

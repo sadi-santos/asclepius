@@ -1,0 +1,16 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "rvest.vs-code-prettier-eslint",
+  "eslint.enable": true,
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact", "json"],
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "always" },
+
+  "[prisma]": { "editor.defaultFormatter": "Prisma.prisma" },
+
+"css.lint.unknownAtRules": "ignore",
+
+  "rest-client.envFileName": ".env",
+  "sqltools.savePassword": true
+  
+}
+

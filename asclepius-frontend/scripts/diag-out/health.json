@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "status": 200,
+  "body": "{\"status\":\"ok\",\"service\":\"Asclepius SGHSS\",\"version\":\"1.0.0\",\"environment\":\"development\",\"timestamp\":\"2025-10-14T04:52:33.763Z\"}"
+}

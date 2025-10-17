@@ -1,0 +1,33 @@
+import { Route, Routes, Navigate } from "react-router-dom";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import PatientsList from "./pages/patients/PatientsList";
+import PatientForm from "./pages/patients/PatientForm";
+import ProfessionalsList from "./pages/professionals/ProfessionalsList";
+import AppointmentsList from "./pages/appointments/AppointmentsList";
+import Layout from "./components/Layout";
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="patients" element={<PatientsList />} />
+        <Route path="patients/new" element={<PatientForm />} />
+        <Route path="patients/:id/edit" element={<PatientForm />} />
+        <Route path="professionals" element={<ProfessionalsList />} />
+        <Route path="appointments" element={<AppointmentsList />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
