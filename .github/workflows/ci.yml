@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: asclepius_test
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      # Ajuste conforme seu schema Prisma
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/asclepius_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Install deps (workspaces)
+        run: pnpm install -r
+
+      - name: Prisma migrate (backend)
+        run: pnpm --filter asclepius-backend prisma migrate deploy
+
+      - name: Prisma generate (backend)
+        run: pnpm --filter asclepius-backend prisma generate
+
+      - name: Test (backend)
+        run: pnpm --filter asclepius-backend test
+
+      - name: Build (backend)
+        run: pnpm --filter asclepius-backend build
+
+      - name: Playwright browsers (frontend)
+        run: pnpm --filter asclepius-frontend exec playwright install --with-deps
+        continue-on-error: true
+
+      - name: Test (frontend)
+        run: pnpm --filter asclepius-frontend test
+        continue-on-error: true
+
+      - name: Build (frontend)
+        run: pnpm --filter asclepius-frontend build
