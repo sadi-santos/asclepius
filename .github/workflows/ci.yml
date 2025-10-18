@@ -34,6 +34,8 @@ jobs:
       CI: true
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/asclepius_test?schema=public
+      # usa secret se existir; senão cai no valor temporário
+      JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-temp-secret' }}
 
     steps:
       - name: Checkout
@@ -57,17 +59,9 @@ jobs:
       - name: Install deps (workspace)
         run: pnpm install -r --frozen-lockfile
 
-      - name: List scripts (diagnostic)
-        run: |
-          echo "== BACKEND scripts =="
-          pnpm -C asclepius-backend pkg get scripts || true
-          echo "== FRONTEND scripts =="
-          pnpm -C asclepius-frontend pkg get scripts || true
-
       - name: Wait for Postgres (TCP)
         shell: bash
         run: |
-          set -e
           for i in {1..60}; do
             (echo > /dev/tcp/localhost/5432) >/dev/null 2>&1 && { echo "Postgres OK"; exit 0; }
             echo "Aguardando Postgres... ($i)"; sleep 1;
@@ -88,10 +82,54 @@ jobs:
       - name: Test (backend)
         run: pnpm --filter "./asclepius-backend" run test
 
-      # --- Frontend (opcionais: só se houver script) ---
+      # === Smoke do backend ===
+      - name: Start backend (background)
+        shell: bash
+        run: |
+          node asclepius-backend/dist/server.js > backend.log 2>&1 &
+          echo $! > backend.pid
+
+      - name: Wait /health
+        shell: bash
+        run: |
+          for i in {1..60}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health || true)
+            if [ "$code" = "200" ]; then echo "Health OK"; exit 0; fi
+            echo "Aguardando backend... ($i) status=$code"; sleep 1;
+          done
+          echo "Backend não ficou saudável a tempo"; tail -n +1 backend.log; exit 1
+
+      - name: Smoke /auth/login
+        shell: bash
+        env:
+          CI_LOGIN_EMAIL: ${{ secrets.CI_LOGIN_EMAIL }}
+          CI_LOGIN_PASSWORD: ${{ secrets.CI_LOGIN_PASSWORD }}
+        run: |
+          if [ -z "$CI_LOGIN_EMAIL" ] || [ -z "$CI_LOGIN_PASSWORD" ]; then
+            echo "Sem secrets CI_LOGIN_EMAIL/CI_LOGIN_PASSWORD — pulando login smoke."
+            exit 0
+          fi
+          http_code=$(curl -sS -o login.json -D headers.txt -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$CI_LOGIN_EMAIL\",\"password\":\"$CI_LOGIN_PASSWORD\"}" \
+            http://localhost:3001/auth/login || true)
+          echo "HTTP $http_code"
+          echo "--- headers ---"; cat headers.txt || true
+          echo "--- body ---"; cat login.json || true
+          test "$http_code" = "200"
+
+      # --- Frontend (opcionais) ---
       - name: Test (frontend, if-present)
         run: pnpm --filter "./asclepius-frontend" run --if-present test
         continue-on-error: true
 
       - name: Build (frontend, if-present)
         run: pnpm --filter "./asclepius-frontend" run --if-present build
+
+      - name: Stop backend (always)
+        if: always()
+        shell: bash
+        run: |
+          if [ -f backend.pid ]; then kill $(cat backend.pid) || true; fi
+          echo "==== backend.log (tail) ===="
+          tail -n +1 backend.log || true
