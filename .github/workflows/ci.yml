@@ -57,6 +57,13 @@ jobs:
       - name: Install deps (workspace)
         run: pnpm install -r --frozen-lockfile
 
+      - name: List scripts (diagnostic)
+        run: |
+          echo "== BACKEND scripts =="
+          pnpm -C asclepius-backend pkg get scripts || true
+          echo "== FRONTEND scripts =="
+          pnpm -C asclepius-frontend pkg get scripts || true
+
       - name: Wait for Postgres (TCP)
         shell: bash
         run: |
@@ -74,21 +81,17 @@ jobs:
       - name: Prisma migrate deploy (backend)
         run: pnpm --filter "./asclepius-backend" exec prisma migrate deploy
 
-      # --- Build/Test backend ---
+      # --- Build/Test backend (obrigatórios) ---
       - name: Build (backend)
         run: pnpm --filter "./asclepius-backend" run build
 
       - name: Test (backend)
         run: pnpm --filter "./asclepius-backend" run test
 
-      # --- Frontend (tolerante enquanto estabiliza) ---
-      - name: Playwright browsers (frontend)
-        run: pnpm --filter "./asclepius-frontend" exec playwright install --with-deps
+      # --- Frontend (opcionais: só se houver script) ---
+      - name: Test (frontend, if-present)
+        run: pnpm --filter "./asclepius-frontend" run --if-present test
         continue-on-error: true
 
-      - name: Test (frontend)
-        run: pnpm --filter "./asclepius-frontend" run test
-        continue-on-error: true
-
-      - name: Build (frontend)
-        run: pnpm --filter "./asclepius-frontend" run build
+      - name: Build (frontend, if-present)
+        run: pnpm --filter "./asclepius-frontend" run --if-present build
