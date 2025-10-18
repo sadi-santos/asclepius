@@ -1,4 +1,5 @@
-﻿import { app } from './app';
+import "./types/express";
+import { app } from './app';
 import { env } from './config/env';
 
 const PORT = env.PORT;
