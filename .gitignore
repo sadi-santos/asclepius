@@ -13,3 +13,7 @@ asclepius-backend/**/*.tsbuildinfo
 asclepius-frontend/**/.vite/
 playwright-report/
 test-results/
+
+# backups gerados pelos scripts
+*.backup-*
+
