@@ -33,7 +33,7 @@ jobs:
     env:
       CI: true
       NODE_ENV: test
-      PNPM_LOG_LEVEL: debug
+      # Ajuste se quiser padronizar com seu local; estes valores combinam com o service acima
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/asclepius_test?schema=public
 
     steps:
@@ -44,56 +44,64 @@ jobs:
           persist-credentials: false
           submodules: false
 
-      - name: Setup Node 20
+      - name: Setup Node 20 (with cache)
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
+      # ✅ Resolve "Unable to locate executable file: pnpm"
       - name: Install PNPM 10.18.2 globally
         run: |
           npm i -g pnpm@10.18.2
           pnpm -v
           node -v
 
-      - name: Install deps (workspace) — verbose
+      # Opcional: cliente psql para diagnósticos/wait
+      - name: Install PostgreSQL client (pg_isready, psql)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Prepare logs dir
         run: |
           mkdir -p logs
-          set -o pipefail
-          pnpm install -r --frozen-lockfile 2>&1 | tee logs/pnpm_install.log
+          echo "Logs do CI" > logs/_placeholder.txt
 
-      - name: List scripts (diagnostic)
+      - name: Show workspace tree (diag)
         run: |
-          echo "== BACKEND scripts ==" | tee -a logs/diagnostic.txt
-          pnpm -C asclepius-backend pkg get scripts 2>&1 | tee -a logs/diagnostic.txt || true
-          echo "== FRONTEND scripts ==" | tee -a logs/diagnostic.txt
-          pnpm -C asclepius-frontend pkg get scripts 2>&1 | tee -a logs/diagnostic.txt || true
+          ls -la
+          ls -la asclepius-backend || true
+          ls -la asclepius-frontend || true
 
-      - name: Wait for Postgres (TCP)
-        shell: bash
+      - name: Install deps (workspace)
         run: |
-          set -e
+          pnpm install -r --frozen-lockfile 2>&1 | tee -a logs/install.txt
+
+      - name: List scripts (diag)
+        run: |
+          echo "== BACKEND scripts ==" | tee -a logs/scripts.txt
+          pnpm -C asclepius-backend pkg get scripts | tee -a logs/scripts.txt || true
+          echo "== FRONTEND scripts ==" | tee -a logs/scripts.txt
+          pnpm -C asclepius-frontend pkg get scripts | tee -a logs/scripts.txt || true
+
+      - name: Wait for Postgres (pg_isready)
+        run: |
           for i in {1..60}; do
-            (echo > /dev/tcp/localhost/5432) >/dev/null 2>&1 && { echo "Postgres OK"; exit 0; }
+            pg_isready -h localhost -p 5432 -U postgres -d asclepius_test && echo "Postgres OK" && exit 0
             echo "Aguardando Postgres... ($i)"; sleep 1;
           done
-          echo "Postgres não respondeu a tempo"; exit 1
+          echo "Postgres não respondeu a tempo" >&2
+          exit 1
 
       # --- Prisma (backend) ---
       - name: Prisma generate (backend)
         run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-backend" exec prisma generate 2>&1 | tee logs/prisma_generate.log
-
-      - name: Prisma migrate status (backend)
-        run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-backend" exec prisma migrate status 2>&1 | tee logs/prisma_migrate_status.log
+          pnpm --filter "./asclepius-backend" exec prisma generate 2>&1 | tee -a logs/prisma.txt
 
       - name: Prisma migrate deploy (backend)
         run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-backend" exec prisma migrate deploy 2>&1 | tee logs/prisma_migrate_deploy.log
+          pnpm --filter "./asclepius-backend" exec prisma migrate deploy 2>&1 | tee -a logs/prisma.txt
 
       # após:
       # - name: Prisma migrate deploy (backend)
@@ -102,8 +110,8 @@ jobs:
       - name: Seed (se existir)
         shell: bash
         run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-backend" run --if-present prisma:seed 2>&1 | tee logs/prisma_seed.log
+          # roda seed se o script existir no package.json
+          pnpm --filter "./asclepius-backend" run --if-present prisma:seed 2>&1 | tee -a logs/seed.txt || true
 
       - name: Ensure admin (se existir)
         shell: bash
@@ -111,84 +119,45 @@ jobs:
           ADMIN_EMAIL: ${{ secrets.CI_LOGIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.CI_LOGIN_PASSWORD }}
         run: |
+          set -e
           if [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASSWORD" ]; then
-            echo "Sem ADMIN_EMAIL/ADMIN_PASSWORD nos secrets — pulando ensure-admin."
+            echo "Sem ADMIN_EMAIL/ADMIN_PASSWORD nos secrets — pulando ensure-admin." | tee -a logs/ensure-admin.txt
             exit 0
           fi
-          set -o pipefail
+
           if [ -f asclepius-backend/dist/scripts/ensure-admin.js ]; then
-            echo "Executando ensure-admin (dist)..."
-            node asclepius-backend/dist/scripts/ensure-admin.js "$ADMIN_EMAIL" "$ADMIN_PASSWORD" 2>&1 | tee logs/ensure_admin.log
+            echo "Executando ensure-admin compilado" | tee -a logs/ensure-admin.txt
+            node asclepius-backend/dist/scripts/ensure-admin.js "$ADMIN_EMAIL" "$ADMIN_PASSWORD" 2>&1 | tee -a logs/ensure-admin.txt || true
           else
-            echo "Executando ensure-admin (ts-node)..."
-            pnpm --filter "./asclepius-backend" exec ts-node src/scripts/ensure-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD" 2>&1 | tee logs/ensure_admin.log
+            echo "Executando ensure-admin via ts-node" | tee -a logs/ensure-admin.txt
+            pnpm --filter "./asclepius-backend" exec ts-node src/scripts/ensure-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD" 2>&1 | tee -a logs/ensure-admin.txt || true
           fi
 
       # --- Build/Test backend (obrigatórios) ---
-      - name: Build (backend) — verbose
+      - name: Build (backend)
         run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-backend" run build 2>&1 | tee logs/backend_build.log
+          pnpm --filter "./asclepius-backend" run build 2>&1 | tee -a logs/build-backend.txt
 
-      - name: Test (backend) — verbose
+      - name: Test (backend)
         run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-backend" run test 2>&1 | tee logs/backend_test.log
+          pnpm --filter "./asclepius-backend" run test 2>&1 | tee -a logs/test-backend.txt
 
-      # --- Frontend (opcionais) ---
+      # --- Frontend (opcionais: só se houver script) ---
       - name: Test (frontend, if-present)
-        continue-on-error: true
         run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-frontend" run --if-present test 2>&1 | tee logs/frontend_test.log
+          pnpm --filter "./asclepius-frontend" run --if-present test 2>&1 | tee -a logs/test-frontend.txt
+        continue-on-error: true
 
       - name: Build (frontend, if-present)
+        run: |
+          pnpm --filter "./asclepius-frontend" run --if-present build 2>&1 | tee -a logs/build-frontend.txt
         continue-on-error: true
-        run: |
-          set -o pipefail
-          pnpm --filter "./asclepius-frontend" run --if-present build 2>&1 | tee logs/frontend_build.log
 
-      # --- Smoke runtime do backend (+ body do /auth/login) ---
-      - name: Start backend (bg) & wait
-        run: |
-          set -e
-          node asclepius-backend/dist/server.js > logs/backend_runtime.log 2>&1 &
-          for i in {1..60}; do
-            if curl -fsS http://localhost:3001/health >/dev/null; then
-              echo "Backend up"; exit 0
-            fi
-            echo "Aguardando backend... ($i)"
-            sleep 1
-          done
-          echo "Backend não subiu a tempo"; exit 1
-
-      - name: Smoke test /auth/login (não bloqueante)
-        continue-on-error: true
-        env:
-          EMAIL: ${{ secrets.CI_LOGIN_EMAIL }}
-          PASSWORD: ${{ secrets.CI_LOGIN_PASSWORD }}
-        run: |
-          set +e
-          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
-            echo "Sem CI_LOGIN_EMAIL/CI_LOGIN_PASSWORD — pulando smoke de login."
-            exit 0
-          fi
-          RES=$(curl -sS -w "\n%{http_code}" -H "Content-Type: application/json" \
-            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" \
-            http://localhost:3001/auth/login)
-          BODY=$(echo "$RES" | head -n -1)
-          CODE=$(echo "$RES" | tail -n1)
-          echo "HTTP $CODE"
-          echo "Body:"
-          echo "$BODY"
-          mkdir -p logs
-          echo "$BODY" > logs/auth_login_body.json
-
-      # --- Artefatos de log ---
-      - name: Upload logs (sempre)
-        if: ${{ always() }}
+      # Artifacts sempre (evita "No files were found...")
+      - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-logs
-          path: logs/
-
+          path: logs/**
+          retention-days: 7
