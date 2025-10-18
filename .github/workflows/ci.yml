@@ -46,23 +46,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
 
-      # --- PNPM robusto: Corepack + fallback global ---
-      - name: Ensure PNPM 10.18.2 available
-        shell: bash
+      - name: Install PNPM 10.18.2 globally
         run: |
-          set -euxo pipefail
-          node -v
-          # habilita corepack e tenta ativar o pnpm desejado
-          corepack enable
-          corepack prepare pnpm@10.18.2 --activate || true
-          # se ainda não tiver pnpm no PATH, instala globalmente como fallback
-          if ! command -v pnpm >/dev/null 2>&1; then
-            npm i -g pnpm@10.18.2
-          fi
+          npm i -g pnpm@10.18.2
           pnpm -v
-          pnpm config set store-dir ~/.pnpm-store
+          node -v
 
       - name: Install deps (workspace)
         run: pnpm install -r --frozen-lockfile
@@ -91,7 +80,7 @@ jobs:
       - name: Test (backend)
         run: pnpm --filter "./asclepius-backend" run test
 
-      # --- Frontend (tolerante enquanto estabiliza) ---
+      # --- Frontend (mantido tolerante enquanto estabiliza) ---
       - name: Playwright browsers (frontend)
         run: pnpm --filter "./asclepius-frontend" exec playwright install --with-deps
         continue-on-error: true
