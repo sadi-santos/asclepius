@@ -1,0 +1,5 @@
+﻿* text=auto eol=lf
+
+# scripts Windows podem ficar CRLF sem sujar o histórico
+*.ps1 text eol=crlf
+*.bat text eol=crlf
