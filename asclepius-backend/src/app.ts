@@ -1,3 +1,4 @@
+import "./types/express-augmentations";
 import "./types/express";
 // src/app.ts
 import 'express-async-errors';
@@ -42,7 +43,7 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 if (env.NODE_ENV === 'development') app.use(morgan('dev'));
 
-// CONVERSÕES E NORMALIZAÇÕES ANTES DAS ROTAS:
+// CONVERSÃ•ES E NORMALIZAÃ‡Ã•ES ANTES DAS ROTAS:
 app.use(acceptCamelOnRequest());
 app.use(normalizeIsoDates());
 app.use(respondCamelOnJson());
@@ -68,7 +69,7 @@ app.use('/professionals', professionalRoutes);
 app.use('/appointments', appointmentRoutes);
 
 app.use((req, res) => {
-  res.status(404).json({ error: 'not_found', message: 'Endpoint não encontrado', path: req.path });
+  res.status(404).json({ error: 'not_found', message: 'Endpoint nÃ£o encontrado', path: req.path });
 });
 
 app.use(errorHandler);

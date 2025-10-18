@@ -1,3 +1,4 @@
+import "./types/express-augmentations";
 import "./types/express";
 import { app } from './app';
 import { env } from './config/env';
@@ -7,7 +8,7 @@ const PORT = env.PORT;
 app.listen(PORT, () => {
   console.log('');
   console.log('==============================================');
-  console.log('ASCLEPIUS SGHSS - Sistema de Gestão Hospitalar');
+  console.log('ASCLEPIUS SGHSS - Sistema de GestÃ£o Hospitalar');
   console.log('==============================================');
   console.log('');
   console.log(`Servidor: http://localhost:${PORT}`);

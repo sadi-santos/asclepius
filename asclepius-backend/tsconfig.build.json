@@ -1,14 +1,25 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist"
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "types": ["node"]
   },
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": [
     "**/*.test.ts",
     "**/*.spec.ts",
     "tests/**",
     "**/*.test.tsx",
     "**/*.spec.tsx",
-    "playwright/**"
+    "playwright/**",
+    "dist",
+    "node_modules"
   ]
 }
