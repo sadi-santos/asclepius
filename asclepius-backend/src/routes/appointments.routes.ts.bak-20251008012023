@@ -1,0 +1,108 @@
+import { Router } from 'express';
+import { prisma } from '../config/prisma';
+import { auth } from '../middlewares/auth';
+import { requireRole } from '../middlewares/rbac';
+import { validate } from '../middlewares/validate';
+import { createAppointmentSchema, updateAppointmentSchema } from '../validators/appointment';
+import { auditLog } from '../services/audit';
+
+const router = Router();
+
+// POST /appointments
+router.post('/', auth, requireRole('ADMIN', 'DOCTOR', 'NURSE'), validate(createAppointmentSchema), async (req, res) => {
+  const data = { ...req.body, scheduledAt: new Date(req.body.scheduledAt) };
+
+  const [patient, professional] = await Promise.all([
+    prisma.patient.findUnique({ where: { id: data.patientId } }),
+    prisma.professional.findUnique({ where: { id: data.professionalId } }),
+  ]);
+  if (!patient || !patient.isActive) return res.status(404).json({ error: 'patient_not_found_or_inactive' });
+  if (!professional || !professional.isActive) return res.status(404).json({ error: 'professional_not_found_or_inactive' });
+
+  const appointment = await prisma.appointment.create({
+    data,
+    include: {
+      patient: { select: { fullName: true, cpf: true } },
+      professional: { select: { fullName: true, specialty: true, role: true } },
+    },
+  });
+
+  await auditLog({ userId: req.user!.id, action: 'CREATE_APPOINTMENT', entity: 'Appointment', entityId: appointment.id });
+  res.status(201).json(appointment);
+});
+
+// GET /appointments
+router.get('/', auth, async (req, res) => {
+  const { patientId, professionalId, status, type } = req.query;
+  const where: any = {};
+  if (patientId) where.patientId = patientId;
+  if (professionalId) where.professionalId = professionalId;
+  if (status) where.status = status;
+  if (type) where.type = type;
+
+  const items = await prisma.appointment.findMany({
+    where,
+    orderBy: { scheduledAt: 'desc' },
+    include: {
+      patient: { select: { fullName: true, cpf: true, phone: true } },
+      professional: { select: { fullName: true, specialty: true, role: true } },
+    },
+  });
+  res.json(items);
+});
+
+// GET /appointments/:id
+router.get('/:id', auth, async (req, res) => {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: req.params.id },
+    include: { patient: true, professional: true },
+  });
+  if (!appointment) return res.status(404).json({ error: 'appointment_not_found' });
+  res.json(appointment);
+});
+
+// PUT /appointments/:id
+router.put('/:id', auth, requireRole('ADMIN', 'DOCTOR', 'NURSE'), validate(updateAppointmentSchema), async (req, res) => {
+  const data: any = { ...req.body };
+  if (data.scheduledAt) data.scheduledAt = new Date(data.scheduledAt);
+
+  const appointment = await prisma.appointment.update({
+    where: { id: req.params.id },
+    data,
+  });
+
+  await auditLog({ userId: req.user!.id, action: 'UPDATE_APPOINTMENT', entity: 'Appointment', entityId: appointment.id, details: JSON.stringify(req.body) });
+  res.json(appointment);
+});
+
+// PATCH /appointments/:id/confirm
+router.patch('/:id/confirm', auth, requireRole('ADMIN', 'NURSE'), async (req, res) => {
+  const appointment = await prisma.appointment.update({
+    where: { id: req.params.id },
+    data: { status: 'CONFIRMED' },
+  });
+  await auditLog({ userId: req.user!.id, action: 'CONFIRM_APPOINTMENT', entity: 'Appointment', entityId: appointment.id });
+  res.json(appointment);
+});
+
+// PATCH /appointments/:id/complete
+router.patch('/:id/complete', auth, requireRole('DOCTOR', 'NURSE'), async (req, res) => {
+  const appointment = await prisma.appointment.update({
+    where: { id: req.params.id },
+    data: { status: 'COMPLETED', notes: req.body?.notes ?? undefined },
+  });
+  await auditLog({ userId: req.user!.id, action: 'COMPLETE_APPOINTMENT', entity: 'Appointment', entityId: appointment.id });
+  res.json(appointment);
+});
+
+// PATCH /appointments/:id/cancel
+router.patch('/:id/cancel', auth, requireRole('ADMIN', 'DOCTOR', 'NURSE'), async (req, res) => {
+  const appointment = await prisma.appointment.update({
+    where: { id: req.params.id },
+    data: { status: 'CANCELLED', cancelReason: req.body?.reason ?? null },
+  });
+  await auditLog({ userId: req.user!.id, action: 'CANCEL_APPOINTMENT', entity: 'Appointment', entityId: appointment.id, details: req.body?.reason });
+  res.json(appointment);
+});
+
+export default router;

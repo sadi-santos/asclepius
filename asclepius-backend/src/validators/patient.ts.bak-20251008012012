@@ -1,0 +1,28 @@
+﻿import { z } from 'zod';
+
+export const createPatientSchema = z.object({
+  body: z.object({
+    fullName: z.string().min(3).max(150),
+    cpf: z.string().length(11).regex(/^\d+$/),
+    birthDate: z.string().transform((d) => new Date(d)),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
+    allergies: z.string().optional(),
+    notes: z.string().optional(),
+  }),
+});
+
+export const updatePatientSchema = z.object({
+  body: z.object({
+    fullName: z.string().min(3).max(150).optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
+    allergies: z.string().optional(),
+    notes: z.string().optional(),
+    isActive: z.boolean().optional(),
+  }),
+});

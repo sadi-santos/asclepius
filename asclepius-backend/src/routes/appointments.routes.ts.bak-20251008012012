@@ -1,0 +1,30 @@
+﻿import { Router } from 'express';
+import { prisma } from '../config/prisma';
+import { auth } from '../middlewares/auth';
+import { requireRole } from '../middlewares/rbac';
+
+const router = Router();
+
+router.post('/', auth, requireRole('ADMIN', 'DOCTOR', 'NURSE'), async (req, res) => {
+  const appointment = await prisma.appointment.create({ data: { ...req.body, scheduledAt: new Date(req.body.scheduledAt) } });
+  res.status(201).json(appointment);
+});
+
+router.get('/', auth, async (req, res) => {
+  const { patientId, professionalId, status, type } = req.query;
+  const where: any = {};
+  if (patientId) where.patientId = patientId;
+  if (professionalId) where.professionalId = professionalId;
+  if (status) where.status = status;
+  if (type) where.type = type;
+
+  const appointments = await prisma.appointment.findMany({ where, orderBy: { scheduledAt: 'desc' } });
+  res.json(appointments);
+});
+
+router.patch('/:id/cancel', auth, requireRole('ADMIN', 'DOCTOR', 'NURSE'), async (req, res) => {
+  const appointment = await prisma.appointment.update({ where: { id: req.params.id }, data: { status: 'CANCELLED', cancelReason: req.body.reason } });
+  res.json(appointment);
+});
+
+export default router;

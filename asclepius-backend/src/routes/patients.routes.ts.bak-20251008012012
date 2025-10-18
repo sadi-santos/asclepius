@@ -1,0 +1,57 @@
+﻿import { Router } from 'express';
+import { prisma } from '../config/prisma';
+import { auth } from '../middlewares/auth';
+import { requireRole } from '../middlewares/rbac';
+import { validate } from '../middlewares/validate';
+import { createPatientSchema, updatePatientSchema } from '../validators/patient';
+import { auditLog } from '../services/audit';
+
+const router = Router();
+
+router.post('/', auth, requireRole('ADMIN', 'NURSE', 'DOCTOR'), validate(createPatientSchema), async (req, res) => {
+  const patient = await prisma.patient.create({ data: req.body });
+  await auditLog({ userId: req.user!.id, action: 'CREATE_PATIENT', entity: 'Patient', entityId: patient.id, ip: req.ip, userAgent: req.headers['user-agent'] });
+  res.status(201).json(patient);
+});
+
+router.get('/', auth, async (req, res) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const size = Math.min(parseInt(req.query.size as string) || 20, 100);
+  const search = (req.query.search as string) || '';
+
+  const where: any = { isActive: true };
+  if (search) {
+    where.OR = [
+      { fullName: { contains: search, mode: 'insensitive' } },
+      { cpf: { contains: search } },
+      { email: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.patient.findMany({ where, skip: (page - 1) * size, take: size, orderBy: { createdAt: 'desc' } }),
+    prisma.patient.count({ where }),
+  ]);
+
+  res.json({ page, size, total, totalPages: Math.ceil(total / size), items });
+});
+
+router.get('/:id', auth, async (req, res) => {
+  const patient = await prisma.patient.findUnique({ where: { id: req.params.id } });
+  if (!patient) return res.status(404).json({ error: 'patient_not_found' });
+  res.json(patient);
+});
+
+router.put('/:id', auth, requireRole('ADMIN', 'DOCTOR', 'NURSE'), validate(updatePatientSchema), async (req, res) => {
+  const patient = await prisma.patient.update({ where: { id: req.params.id }, data: req.body });
+  await auditLog({ userId: req.user!.id, action: 'UPDATE_PATIENT', entity: 'Patient', entityId: patient.id, details: JSON.stringify(req.body), ip: req.ip, userAgent: req.headers['user-agent'] });
+  res.json(patient);
+});
+
+router.delete('/:id', auth, requireRole('ADMIN'), async (req, res) => {
+  await prisma.patient.update({ where: { id: req.params.id }, data: { isActive: false } });
+  await auditLog({ userId: req.user!.id, action: 'DELETE_PATIENT', entity: 'Patient', entityId: req.params.id, ip: req.ip, userAgent: req.headers['user-agent'] });
+  res.status(204).send();
+});
+
+export default router;

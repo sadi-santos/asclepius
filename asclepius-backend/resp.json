@@ -1,0 +1,15 @@
+﻿{
+    "id":  "f055dc81-f3c3-4046-88e1-9bdd6755ecbb",
+    "full_name":  "Jo�o da Silva (Teste)",
+    "cpf":  "99988877766",
+    "birth_date":  "1990-05-10T00:00:00.000Z",
+    "email":  "joao2@example.com",
+    "phone":  "(11) 90000-0000",
+    "address":  null,
+    "blood_type":  null,
+    "allergies":  null,
+    "notes":  null,
+    "is_active":  true,
+    "created_at":  "2025-10-09T23:48:52.507Z",
+    "updated_at":  "2025-10-09T23:48:52.507Z"
+}

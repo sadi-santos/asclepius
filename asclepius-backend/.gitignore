@@ -1,0 +1,32 @@
+﻿@'
+# Node
+node_modules/
+dist/
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+# gerados internos
+node_modules/.prisma/
+
+# Logs e cobertura
+logs/
+*.log
+coverage/
+
+# Editor
+.vscode/
+.idea/
+
+# SO
+.DS_Store
+Thumbs.db
+'@ | Out-File -Encoding utf8 .gitignore

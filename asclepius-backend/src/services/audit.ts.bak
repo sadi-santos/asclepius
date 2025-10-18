@@ -1,0 +1,39 @@
+﻿// src/services/audit.ts
+import { prisma } from '../config/prisma';
+
+type AuditLogParams = {
+  action: string;
+  entity: string;
+  userId?: string | null;
+  entityId?: string | null;
+  details?: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
+};
+
+export async function auditLog({
+  action,
+  entity,
+  userId = null,
+  entityId = null,
+  details = null,
+  ip = null,
+  userAgent = null,
+}: AuditLogParams): Promise<void> {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        action,
+        entity,
+        user_id: userId,
+        entity_id: entityId,
+        details,
+        ip,
+        user_agent: userAgent,
+      },
+    });
+  } catch (err) {
+    // não quebrar o fluxo de negócio se o log falhar
+    console.warn('Falha ao registrar auditoria:', err);
+  }
+}

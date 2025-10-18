@@ -1,0 +1,24 @@
+import { z } from 'zod';
+
+export const createProfessionalSchema = z.object({
+  body: z.object({
+    fullName: z.string().min(3).max(150),
+    role: z.string().min(3),
+    specialty: z.string().optional(),
+    licenseNumber: z.string().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+  }),
+});
+
+export const updateProfessionalSchema = z.object({
+  body: z.object({
+    fullName: z.string().min(3).max(150).optional(),
+    role: z.string().min(3).optional(),
+    specialty: z.string().optional(),
+    licenseNumber: z.string().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    isActive: z.boolean().optional(),
+  }),
+});

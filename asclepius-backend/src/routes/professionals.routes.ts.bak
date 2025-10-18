@@ -1,0 +1,43 @@
+import { Router } from 'express';
+import { prisma } from '../config/prisma';
+import { auth } from '../middlewares/auth';
+import { requireRole } from '../middlewares/rbac';
+import { validate } from '../middlewares/validate';
+import { createProfessionalSchema, updateProfessionalSchema } from '../validators/professional';
+import { auditLog } from '../services/audit';
+
+const router = Router();
+
+router.post('/', auth, requireRole('ADMIN'), validate(createProfessionalSchema), async (req, res) => {
+  const professional = await prisma.professional.create({ data: req.body });
+  await auditLog({ user_id: req.user!.id, action: 'CREATE_PROFESSIONAL', entity: 'Professional', entity_id: professional.id });
+  res.status(201).json(professional);
+});
+
+router.get('/', auth, async (req, res) => {
+  const professionals = await prisma.professional.findMany({
+    where: { is_active: true },
+    orderBy: { full_name: 'asc' },
+  });
+  res.json(professionals);
+});
+
+router.get('/:id', auth, async (req, res) => {
+  const professional = await prisma.professional.findUnique({ where: { id: req.params.id } });
+  if (!professional) return res.status(404).json({ error: 'professional_not_found' });
+  res.json(professional);
+});
+
+router.put('/:id', auth, requireRole('ADMIN'), validate(updateProfessionalSchema), async (req, res) => {
+  const professional = await prisma.professional.update({ where: { id: req.params.id }, data: req.body });
+  await auditLog({ user_id: req.user!.id, action: 'UPDATE_PROFESSIONAL', entity: 'Professional', entity_id: professional.id, details: JSON.stringify(req.body) });
+  res.json(professional);
+});
+
+router.delete('/:id', auth, requireRole('ADMIN'), async (req, res) => {
+  await prisma.professional.update({ where: { id: req.params.id }, data: { is_active: false } });
+  await auditLog({ user_id: req.user!.id, action: 'DELETE_PROFESSIONAL', entity: 'Professional', entity_id: req.params.id });
+  res.status(204).send();
+});
+
+export default router;

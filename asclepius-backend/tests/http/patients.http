@@ -1,0 +1,17 @@
+@base=http://localhost:3001
+@token=PASTE_YOUR_JWT
+
+### Create
+POST {{base}}/patients
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "full_name": "Paciente HTTP",
+  "cpf": "12345678901",
+  "birth_date": "1988-03-15T00:00:00Z"
+}
+
+### List
+GET {{base}}/patients
+Authorization: Bearer {{token}}

@@ -1,0 +1,154 @@
+import { Router } from "express";
+import { prisma } from "../config/prisma";
+import { auth } from "../middlewares/auth";
+import { requireRole } from "../middlewares/rbac";
+import { validate } from "../middlewares/validate";
+import {
+  createPatientSchema,
+  updatePatientSchema,
+} from "../validators/patient";
+import { auditLog } from "../services/audit";
+
+const router = Router();
+
+// POST /patients
+router.post(
+  "/",
+  auth,
+  requireRole("ADMIN", "NURSE", "DOCTOR"),
+  validate(createPatientSchema),
+  async (req, res) => {
+    const patient = await prisma.patient.create({
+      data: req.body,
+    });
+
+    await auditLog({
+      user_id: req.user!.id,
+      action: "CREATE_PATIENT",
+      entity: "Patient",
+      entity_id: patient.id,
+      details: `Paciente ${patient.full_name} criado`,
+      ip: req.ip,
+      user_agent: req.headers["user-agent"],
+    });
+
+    return res.status(201).json(patient);
+  },
+);
+
+// GET /patients (lista com paginaÃ§Ã£o e busca)
+router.get("/", auth, async (req, res) => {
+  const page = parseInt((req.query.page as string) || "1", 10);
+  const size = Math.min(parseInt((req.query.size as string) || "20", 10), 100);
+  const search = (req.query.search as string) || "";
+
+  const where: any = { is_active: true };
+
+  if (search) {
+    where.OR = [
+      { full_name: { contains: search, mode: "insensitive" } },
+      { cpf: { contains: search } },
+      { email: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.patient.findMany({
+      where,
+      skip: (page - 1) * size,
+      take: size,
+      orderBy: { created_at: "desc" },
+      select: {
+        id: true,
+        full_name: true,
+        cpf: true,
+        email: true,
+        phone: true,
+        birth_date: true,
+        blood_type: true,
+        is_active: true,
+        created_at: true,
+      },
+    }),
+    prisma.patient.count({ where }),
+  ]);
+
+  return res.json({
+    page,
+    size,
+    total,
+    totalPages: Math.ceil(total / size),
+    items,
+  });
+});
+
+// GET /patients/:id (detalhe com Ãºltimos agendamentos)
+router.get("/:id", auth, async (req, res) => {
+  const patient = await prisma.patient.findUnique({
+    where: { id: req.params.id },
+    include: {
+      appointments: {
+        take: 10,
+        orderBy: { scheduled_at: "desc" },
+        include: {
+          professional: {
+            select: { full_name: true, specialty: true, role: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!patient) {
+    return res.status(404).json({ error: "patient_not_found" });
+  }
+
+  return res.json(patient);
+});
+
+// PUT /patients/:id
+router.put(
+  "/:id",
+  auth,
+  requireRole("ADMIN", "DOCTOR", "NURSE"),
+  validate(updatePatientSchema),
+  async (req, res) => {
+    const patient = await prisma.patient.update({
+      where: { id: req.params.id },
+      data: req.body,
+    });
+
+    await auditLog({
+      user_id: req.user!.id,
+      action: "UPDATE_PATIENT",
+      entity: "Patient",
+      entity_id: patient.id,
+      details: JSON.stringify(req.body),
+      ip: req.ip,
+      user_agent: req.headers["user-agent"],
+    });
+
+    return res.json(patient);
+  },
+);
+
+// DELETE /patients/:id (soft delete)
+router.delete("/:id", auth, requireRole("ADMIN"), async (req, res) => {
+  await prisma.patient.update({
+    where: { id: req.params.id },
+    data: { is_active: false },
+  });
+
+  await auditLog({
+    user_id: req.user!.id,
+    action: "DELETE_PATIENT",
+    entity: "Patient",
+    entity_id: req.params.id,
+    ip: req.ip,
+    user_agent: req.headers["user-agent"],
+  });
+
+  return res.status(204).send();
+});
+
+export default router;

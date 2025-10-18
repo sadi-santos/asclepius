@@ -1,0 +1,10 @@
+@base=http://localhost:3001
+
+### Login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@vidaplus.com",
+  "password": "VidaPlus@2025"
+}

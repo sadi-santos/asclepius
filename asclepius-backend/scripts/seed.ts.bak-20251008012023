@@ -1,0 +1,110 @@
+import bcrypt from 'bcryptjs';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('Iniciando seed do banco de dados...');
+
+  if (process.env.NODE_ENV === 'development') {
+    await prisma.auditLog.deleteMany();
+    await prisma.appointment.deleteMany();
+    await prisma.patient.deleteMany();
+    await prisma.professional.deleteMany();
+    await prisma.user.deleteMany();
+  }
+
+  const admin = await prisma.user.create({
+    data: {
+      email: 'admin@vidaplus.com',
+      passwordHash: await bcrypt.hash('senha123', 10),
+      role: 'ADMIN',
+    },
+  });
+
+  const doctorUser = await prisma.user.create({
+    data: {
+      email: 'dra.ana@vidaplus.com',
+      passwordHash: await bcrypt.hash('senha123', 10),
+      role: 'DOCTOR',
+    },
+  });
+
+  const nurseUser = await prisma.user.create({
+    data: {
+      email: 'enf.carlos@vidaplus.com',
+      passwordHash: await bcrypt.hash('senha123', 10),
+      role: 'NURSE',
+    },
+  });
+
+  const professional1 = await prisma.professional.create({
+    data: {
+      fullName: 'Dra. Ana Souza',
+      role: 'MÃ©dica',
+      specialty: 'Cardiologia',
+      licenseNumber: 'CRM-SP-123456',
+      email: 'dra.ana@vidaplus.com',
+      phone: '(11) 98888-0001',
+    },
+  });
+
+  const professional2 = await prisma.professional.create({
+    data: {
+      fullName: 'Dr. Roberto Lima',
+      role: 'MÃ©dico',
+      specialty: 'Pediatria',
+      licenseNumber: 'CRM-SP-234567',
+      email: 'dr.roberto@vidaplus.com',
+      phone: '(11) 98888-0002',
+    },
+  });
+
+  const professional3 = await prisma.professional.create({
+    data: {
+      fullName: 'Enf. Carlos Pereira',
+      role: 'Enfermeiro',
+      licenseNumber: 'COREN-SP-987654',
+      email: 'enf.carlos@vidaplus.com',
+      phone: '(11) 98888-0003',
+    },
+  });
+
+  const patient1 = await prisma.patient.create({
+    data: {
+      fullName: 'JoÃ£o Silva',
+      cpf: '12345678900',
+      birthDate: new Date('1985-05-20'),
+      email: 'joao.silva@example.com',
+      phone: '(11) 99999-0001',
+      address: 'Rua das Flores, 123 - SÃ£o Paulo/SP',
+      bloodType: 'O+',
+      allergies: 'Penicilina',
+      notes: 'Paciente hipertenso controlado.',
+    },
+  });
+
+  const patient2 = await prisma.patient.create({
+    data: {
+      fullName: 'Maria Oliveira',
+      cpf: '98765432100',
+      birthDate: new Date('1992-11-15'),
+      email: 'maria.oliveira@example.com',
+      phone: '(21) 91234-5678',
+      address: 'Av. Central, 456 - Rio de Janeiro/RJ',
+      bloodType: 'A+',
+      notes: 'Paciente diabÃ©tica tipo 2.',
+    },
+  });
+
+  console.log('Seed concluÃ­do.');
+}
+
+main()
+  .catch((error) => {
+    console.error('Erro ao executar seed:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

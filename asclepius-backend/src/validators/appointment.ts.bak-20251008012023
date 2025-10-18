@@ -1,0 +1,25 @@
+import { z } from 'zod';
+
+export const createAppointmentSchema = z.object({
+  body: z.object({
+    patientId: z.string().uuid(),
+    professionalId: z.string().uuid(),
+    scheduledAt: z.string()
+      .refine((d) => !isNaN(Date.parse(d)), 'Data/hora invÃ¡lida')
+      .refine((d) => new Date(d) > new Date(), 'A data deve ser futura'),
+    duration: z.number().int().min(15).max(240).default(30),
+    type: z.enum(['CONSULTATION', 'TELEMEDICINE', 'EXAM', 'RETURN']),
+    reason: z.string().optional(),
+    notes: z.string().optional(),
+  }),
+});
+
+export const updateAppointmentSchema = z.object({
+  body: z.object({
+    scheduledAt: z.string().refine((d) => !isNaN(Date.parse(d)), 'Data/hora invÃ¡lida').optional(),
+    duration: z.number().int().min(15).max(240).optional(),
+    type: z.enum(['CONSULTATION', 'TELEMEDICINE', 'EXAM', 'RETURN']).optional(),
+    reason: z.string().optional(),
+    notes: z.string().optional(),
+  }),
+});

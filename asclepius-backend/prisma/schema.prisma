@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  password_hash String
+  role          Role
+  is_active     Boolean    @default(true)
+  last_login_at DateTime?
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  audit_logs    AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Patient {
+  id           String        @id @default(uuid())
+  full_name    String        @db.VarChar(150)
+  cpf          String        @unique @db.VarChar(11)
+  birth_date   DateTime      @db.Date
+  email        String?       @unique
+  phone        String?       @db.VarChar(20)
+  address      String?
+  blood_type   String?       @db.VarChar(5)
+  allergies    String?
+  notes        String?
+  is_active    Boolean       @default(true)
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  appointments Appointment[]
+
+  @@index([full_name], map: "patients_fullName_idx")
+  @@index([cpf])
+  @@map("patients")
+}
+
+model Professional {
+  id             String        @id @default(uuid())
+  full_name      String        @db.VarChar(150)
+  role           String        @db.VarChar(50)
+  specialty      String?       @db.VarChar(100)
+  license_number String?       @unique(map: "professionals_licenseNumber_key") @db.VarChar(20)
+  email          String?       @unique
+  phone          String?       @db.VarChar(20)
+  is_active      Boolean       @default(true)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  appointments   Appointment[]
+
+  @@index([license_number], map: "professionals_licenseNumber_idx")
+  @@index([full_name], map: "professionals_fullName_idx")
+  @@map("professionals")
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  patient_id      String
+  professional_id String
+  scheduled_at    DateTime
+  duration        Int               @default(30)
+  type            AppointmentType
+  status          AppointmentStatus @default(SCHEDULED)
+  reason          String?
+  notes           String?
+  cancel_reason   String?
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+
+  patients      Patient      @relation(fields: [patient_id], references: [id], onDelete: Cascade, map: "appointments_patientId_fkey")
+  professionals Professional @relation(fields: [professional_id], references: [id], map: "appointments_professionalId_fkey")
+
+  @@index([patient_id], map: "appointments_patientId_idx")
+  @@index([professional_id], map: "appointments_professionalId_idx")
+  @@index([scheduled_at], map: "appointments_scheduledAt_idx")
+  @@index([status])
+  @@map("appointments")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  user_id    String?
+  action     String   @db.VarChar(100)
+  entity     String   @db.VarChar(50)
+  entity_id  String?
+  details    String?
+  ip         String?  @db.VarChar(45)
+  user_agent String?
+  created_at DateTime @default(now())
+
+  users User? @relation(fields: [user_id], references: [id], map: "audit_logs_userId_fkey")
+
+  @@index([entity, entity_id], map: "audit_logs_entity_entityId_idx")
+  @@index([user_id], map: "audit_logs_userId_idx")
+  @@index([created_at], map: "audit_logs_createdAt_idx")
+  @@map("audit_logs")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+  STAFF
+}
+
+enum AppointmentType {
+  CONSULTATION
+  TELEMEDICINE
+  EXAM
+  RETURN
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
