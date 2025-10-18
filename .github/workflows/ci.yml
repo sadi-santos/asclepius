@@ -1,8 +1,11 @@
-name: CI
+﻿name: CI
 
 on:
   push:
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -22,52 +25,68 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: asclepius_test
         options: >-
-          --health-cmd="pg_isready -U postgres"
+          --health-cmd="pg_isready -U postgres -d asclepius_test"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
 
     env:
-      # Ajuste conforme seu schema Prisma
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/asclepius_test
+      CI: true
+      NODE_ENV: test
+      # usa o Postgres do serviço acima
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/asclepius_test?schema=public
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: Setup PNPM
+      - name: Setup PNPM 10.18.2
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.18.2
           run_install: false
 
-      - name: Install deps (workspaces)
-        run: pnpm install -r
+      - name: Install deps (workspace)
+        run: pnpm install -r --frozen-lockfile
 
-      - name: Prisma migrate (backend)
-        run: pnpm --filter asclepius-backend prisma migrate deploy
+      - name: Wait for Postgres (TCP)
+        shell: bash
+        run: |
+          for i in {1..60}; do
+            (echo > /dev/tcp/localhost/5432) >/dev/null 2>&1 && { echo "Postgres OK"; exit 0; }
+            echo "Aguardando Postgres... ($i)"; sleep 1;
+          done
+          echo "Postgres não respondeu a tempo"; exit 1
 
+      # --- Prisma (backend) ---
       - name: Prisma generate (backend)
-        run: pnpm --filter asclepius-backend prisma generate
+        run: pnpm --filter "./asclepius-backend" exec prisma generate
+
+      - name: Prisma migrate deploy (backend)
+        run: pnpm --filter "./asclepius-backend" exec prisma migrate deploy
+
+      # --- Build/Test backend ---
+      - name: Build (backend)
+        run: pnpm --filter "./asclepius-backend" run build
 
       - name: Test (backend)
-        run: pnpm --filter asclepius-backend test
+        run: pnpm --filter "./asclepius-backend" run test
+        continue-on-error: false
 
-      - name: Build (backend)
-        run: pnpm --filter asclepius-backend build
-
+      # --- Frontend (opcional: tolerate failures se ainda estiver em ajuste) ---
       - name: Playwright browsers (frontend)
-        run: pnpm --filter asclepius-frontend exec playwright install --with-deps
+        run: pnpm --filter "./asclepius-frontend" exec playwright install --with-deps
         continue-on-error: true
 
       - name: Test (frontend)
-        run: pnpm --filter asclepius-frontend test
+        run: pnpm --filter "./asclepius-frontend" run test
         continue-on-error: true
 
       - name: Build (frontend)
-        run: pnpm --filter asclepius-frontend build
+        run: pnpm --filter "./asclepius-frontend" run build
