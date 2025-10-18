@@ -1,0 +1,15 @@
+﻿node_modules/
+dist/
+build/
+coverage/
+.vscode/
+.idea/
+*.log
+.env
+.env.*
+asclepius-backend/prisma/.env
+asclepius-backend/prisma/generated/
+asclepius-backend/**/*.tsbuildinfo
+asclepius-frontend/**/.vite/
+playwright-report/
+test-results/
