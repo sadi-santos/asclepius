@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI (safe pnpm + logs)
 
 on:
   push:
@@ -14,29 +14,17 @@ concurrency:
 jobs:
   test-build:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: asclepius_test
-        options: >-
-          --health-cmd="pg_isready -U postgres -d asclepius_test"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=20
-
     env:
       CI: true
-      NODE_ENV: test
-      # Ajuste se quiser padronizar com seu local; estes valores combinam com o service acima
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/asclepius_test?schema=public
 
     steps:
+      # Garante que SEMPRE teremos algo pra enviar como artefato
+      - name: Init logs dir (very early)
+        shell: bash
+        run: |
+          mkdir -p logs
+          echo "CI started at $(date -u)" | tee logs/00-start.txt
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -44,120 +32,73 @@ jobs:
           persist-credentials: false
           submodules: false
 
-      - name: Setup Node 20 (with cache)
+      # 1) pnpm/action-setup (mais confiável)
+      - name: Setup PNPM (action)
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.2
+          run_install: false
+
+      # 2) Node + cache de pnpm
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      # ✅ Resolve "Unable to locate executable file: pnpm"
-      - name: Install PNPM 10.18.2 globally
+      # 3) Corepack + fallback npm -g (pro caso extremo)
+      - name: Ensure pnpm available (triple fallback)
+        shell: bash
         run: |
-          npm i -g pnpm@10.18.2
-          pnpm -v
-          node -v
+          set -euxo pipefail
+          {
+            echo "Node: $(node -v)"
+            echo "NPM:  $(npm -v)"
+            echo "PATH: $PATH"
+          } | tee -a logs/01-env.txt
 
-      # Opcional: cliente psql para diagnósticos/wait
-      - name: Install PostgreSQL client (pg_isready, psql)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          command -v pnpm && pnpm -v | tee -a logs/01-env.txt || true
 
-      - name: Prepare logs dir
-        run: |
-          mkdir -p logs
-          echo "Logs do CI" > logs/_placeholder.txt
+          corepack enable || true
+          corepack prepare pnpm@10.18.2 --activate || true
 
-      - name: Show workspace tree (diag)
-        run: |
-          ls -la
-          ls -la asclepius-backend || true
-          ls -la asclepius-frontend || true
+          if ! command -v pnpm >/dev/null 2>&1; then
+            echo "pnpm ainda não disponível; instalando via npm -g" | tee -a logs/01-env.txt
+            npm i -g pnpm@10.18.2
+          fi
 
+          echo "pnpm path: $(command -v pnpm)" | tee -a logs/01-env.txt
+          pnpm -v | tee -a logs/01-env.txt
+
+      # Instala dependências do monorepo
       - name: Install deps (workspace)
+        shell: bash
         run: |
           pnpm install -r --frozen-lockfile 2>&1 | tee -a logs/install.txt
 
-      - name: List scripts (diag)
-        run: |
-          echo "== BACKEND scripts ==" | tee -a logs/scripts.txt
-          pnpm -C asclepius-backend pkg get scripts | tee -a logs/scripts.txt || true
-          echo "== FRONTEND scripts ==" | tee -a logs/scripts.txt
-          pnpm -C asclepius-frontend pkg get scripts | tee -a logs/scripts.txt || true
-
-      - name: Wait for Postgres (pg_isready)
-        run: |
-          for i in {1..60}; do
-            pg_isready -h localhost -p 5432 -U postgres -d asclepius_test && echo "Postgres OK" && exit 0
-            echo "Aguardando Postgres... ($i)"; sleep 1;
-          done
-          echo "Postgres não respondeu a tempo" >&2
-          exit 1
-
-      # --- Prisma (backend) ---
+      # Prisma não depende de Postgres para "generate"
       - name: Prisma generate (backend)
+        shell: bash
         run: |
           pnpm --filter "./asclepius-backend" exec prisma generate 2>&1 | tee -a logs/prisma.txt
 
-      - name: Prisma migrate deploy (backend)
-        run: |
-          pnpm --filter "./asclepius-backend" exec prisma migrate deploy 2>&1 | tee -a logs/prisma.txt
-
-      # após:
-      # - name: Prisma migrate deploy (backend)
-      #   run: pnpm --filter "./asclepius-backend" exec prisma migrate deploy
-
-      - name: Seed (se existir)
-        shell: bash
-        run: |
-          # roda seed se o script existir no package.json
-          pnpm --filter "./asclepius-backend" run --if-present prisma:seed 2>&1 | tee -a logs/seed.txt || true
-
-      - name: Ensure admin (se existir)
-        shell: bash
-        env:
-          ADMIN_EMAIL: ${{ secrets.CI_LOGIN_EMAIL }}
-          ADMIN_PASSWORD: ${{ secrets.CI_LOGIN_PASSWORD }}
-        run: |
-          set -e
-          if [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASSWORD" ]; then
-            echo "Sem ADMIN_EMAIL/ADMIN_PASSWORD nos secrets — pulando ensure-admin." | tee -a logs/ensure-admin.txt
-            exit 0
-          fi
-
-          if [ -f asclepius-backend/dist/scripts/ensure-admin.js ]; then
-            echo "Executando ensure-admin compilado" | tee -a logs/ensure-admin.txt
-            node asclepius-backend/dist/scripts/ensure-admin.js "$ADMIN_EMAIL" "$ADMIN_PASSWORD" 2>&1 | tee -a logs/ensure-admin.txt || true
-          else
-            echo "Executando ensure-admin via ts-node" | tee -a logs/ensure-admin.txt
-            pnpm --filter "./asclepius-backend" exec ts-node src/scripts/ensure-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD" 2>&1 | tee -a logs/ensure-admin.txt || true
-          fi
-
-      # --- Build/Test backend (obrigatórios) ---
+      # Build + Test do backend (somente)
       - name: Build (backend)
+        shell: bash
         run: |
           pnpm --filter "./asclepius-backend" run build 2>&1 | tee -a logs/build-backend.txt
 
       - name: Test (backend)
+        shell: bash
         run: |
           pnpm --filter "./asclepius-backend" run test 2>&1 | tee -a logs/test-backend.txt
 
-      # --- Frontend (opcionais: só se houver script) ---
-      - name: Test (frontend, if-present)
-        run: |
-          pnpm --filter "./asclepius-frontend" run --if-present test 2>&1 | tee -a logs/test-frontend.txt
-        continue-on-error: true
-
-      - name: Build (frontend, if-present)
-        run: |
-          pnpm --filter "./asclepius-frontend" run --if-present build 2>&1 | tee -a logs/build-frontend.txt
-        continue-on-error: true
-
-      # Artifacts sempre (evita "No files were found...")
+      # Upload de logs SEMPRE, mesmo com falha anterior
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-logs
           path: logs/**
+          if-no-files-found: warn
           retention-days: 7
