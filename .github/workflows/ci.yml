@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false   # <- evita o post-job mexendo no git
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
@@ -80,7 +80,7 @@ jobs:
       - name: Test (backend)
         run: pnpm --filter "./asclepius-backend" run test
 
-      # --- Frontend (mantido tolerante enquanto estabiliza) ---
+      # --- Frontend (tolerante enquanto estabiliza) ---
       - name: Playwright browsers (frontend)
         run: pnpm --filter "./asclepius-frontend" exec playwright install --with-deps
         continue-on-error: true
