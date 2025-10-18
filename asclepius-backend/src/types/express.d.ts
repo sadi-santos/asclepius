@@ -1,11 +1,14 @@
-import 'express';
-
-declare module 'express-serve-static-core' {
+/**
+ * Augmenta o tipo do Express para incluir req.user,
+ * preenchido pelo middleware de autenticação.
+ */
+declare module "express-serve-static-core" {
   interface Request {
     user?: {
-      id: string;
-      role: string;
-      email: string;
-    };
+      id: string
+      email: string
+      role?: string
+    }
   }
 }
+export {}

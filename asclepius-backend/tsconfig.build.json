@@ -1,12 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": false,
-    "outDir": "./dist",
-    "sourceMap": true,
-    "declaration": false,
-    "types": ["node"]
+    "outDir": "./dist"
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/__tests__/**", "node_modules"]
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "tests/**",
+    "**/*.test.tsx",
+    "**/*.spec.tsx",
+    "playwright/**"
+  ]
 }
