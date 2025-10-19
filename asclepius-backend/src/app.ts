@@ -1,5 +1,3 @@
-import "./types/express-augmentations";
-import "./types/express";
 // src/app.ts
 import 'express-async-errors';
 import express from 'express';

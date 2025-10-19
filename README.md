@@ -46,6 +46,23 @@ O projeto usa workspaces PNPM; execute os comandos sempre a partir da raiz.
 
 ---
 
+## Instala��o automatizada
+
+O reposit�rio inclui o script `scripts/install.ps1` para provisionar depend�ncias, arquivos `.env` padr�o e (opcionalmente) o banco via Prisma.
+
+```powershell
+pwsh ./scripts/install.ps1
+```
+
+Par�metros �teis:
+
+- `-SkipDatabaseTasks` &mdash; pula migra��es, generate e seed (�til quando o PostgreSQL ainda n�o est� acess�vel).
+- `-SkipSeeds` &mdash; executa migra��es e generate, mas evita rodar o seed.
+
+> O script valida Node.js 20+, PNPM e cria `.env` iniciais se eles ainda n�o existirem. Ajuste as credenciais geradas antes de usar em produ��o.
+
+---
+
 ## Configuração do backend
 
 ### 1. Variáveis de ambiente
@@ -64,7 +81,7 @@ REQUEST_ACCEPT_CAMEL=true
 RESPONSE_USE_CAMEL=true
 ```
 
-> ⚠️ Não versionar `.env`. Ajuste os valores conforme suas credenciais locais.
+> Não versionar `.env`. Ajuste os valores conforme suas credenciais locais.
 
 ### 2. Banco de dados
 
@@ -116,6 +133,8 @@ Abra **dois terminais** na raiz do repositório.
 ```powershell
 pnpm --filter asclepius-backend dev
 # Servidor disponível em http://localhost:3001
+
+# Swaager: start http://localhost:3001/docs/
 ```
 
 ### Frontend (SPA)
