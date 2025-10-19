@@ -6,7 +6,8 @@ const HOST = process.env.E2E_HOST ?? 'localhost';
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://${HOST}:${PORT}`;
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: './tests/e2e',
+  testMatch: '**/*.e2e.spec.ts',
   fullyParallel: true,
   timeout: 60_000,
   expect: { timeout: 10_000 },

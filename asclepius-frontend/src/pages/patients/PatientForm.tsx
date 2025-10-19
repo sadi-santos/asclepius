@@ -173,8 +173,8 @@ export default function PatientForm() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
           <div className="md:col-span-2">
-            <label className="block text-sm text-slate-700 mb-1">Nome completo *</label>
-            <input
+            <label htmlFor="fullName" className="block text-sm text-slate-700 mb-1">Nome completo *</label>
+            <input id="fullName"
               className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               value={form.fullName}
               onChange={onChange("fullName")}
@@ -202,8 +202,8 @@ export default function PatientForm() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-700 mb-1">Data de nascimento *</label>
-            <input
+            <label htmlFor="birthDate" className="block text-sm text-slate-700 mb-1">Data de nascimento *</label>
+            <input id="birthDate"
               type="date"
               className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               value={form.birthDate}
@@ -214,8 +214,8 @@ export default function PatientForm() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-700 mb-1">E-mail</label>
-            <input
+            <label htmlFor="email" className="block text-sm text-slate-700 mb-1">E-mail</label>
+            <input id="email"
               type="email"
               className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               value={form.email ?? ""}
@@ -226,8 +226,8 @@ export default function PatientForm() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-700 mb-1">Telefone</label>
-            <input
+            <label htmlFor="phone" className="block text-sm text-slate-700 mb-1">Telefone</label>
+            <input id="phone"
               className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               value={form.phone ?? ""}
               onChange={onChange("phone")}
@@ -260,8 +260,8 @@ export default function PatientForm() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm text-slate-700 mb-1">Alergias</label>
-            <input
+            <label htmlFor="allergies" className="block text-sm text-slate-700 mb-1">Alergias</label>
+            <input id="allergies"
               className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               value={form.allergies ?? ""}
               onChange={onChange("allergies")}
