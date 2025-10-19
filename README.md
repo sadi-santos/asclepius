@@ -1,158 +1,135 @@
-# Asclepius (VidaPlus) — Monorepo
+# Asclepius (VidaPlus)
 
-Monorepo com **asclepius-backend** (Node/TypeScript/Prisma/PostgreSQL) e **asclepius-frontend** (Vite/React/Tailwind/Playwright).
+Monorepo do sistema hospitalar **Asclepius**, composto por:
 
-> **Sistema operacional alvo deste guia:** Windows (PowerShell).
-> Para Git Bash/Wsl, os comandos são equivalentes (troque `Copy-Item` por `cp`, etc.).
+- **asclepius-backend** – API REST em Node.js/TypeScript, Prisma ORM e PostgreSQL.
+- **asclepius-frontend** – SPA em React (Vite + Tailwind) com testes end-to-end em Playwright.
+
+As instruções a seguir são baseadas em **Windows/PowerShell**, mas funcionam também em Bash/Wsl ajustando pequenas diferenças de comando.
 
 ---
 
 ## Sumário
 
-* [Estrutura do repositório](#estrutura-do-repositório)
-* [Requisitos](#requisitos)
-* [Instalação](#instalação)
-* [Variáveis de ambiente](#variáveis-de-ambiente)
-* [Banco de dados (desenvolvimento)](#banco-de-dados-desenvolvimento)
-* [Scripts comuns](#scripts-comuns)
-* [Testes](#testes)
-* [Build](#build)
-* [Execução (dev)](#execução-dev)
-* [Git: commit & push](#git-commit--push)
-* [Boas práticas](#boas-práticas)
-* [Licença](#licença)
-
----
-
-## Estrutura (resumo)
-
-```
-asclepius-backend/   # API Node/TS (Prisma + Postgres)
-asclepius-frontend/  # Vite/React/Tailwind (Playwright)
-pnpm-workspace.yaml  # workspaces
-```
+- [Requisitos](#requisitos)
+- [Clonagem e instalação](#clonagem-e-instalação)
+- [Configuração do backend](#configuração-do-backend)
+- [Configuração do frontend](#configuração-do-frontend)
+- [Execução em desenvolvimento](#execução-em-desenvolvimento)
+- [Testes automatizados](#testes-automatizados)
+- [Usuários seeds e credenciais úteis](#usuários-seeds-e-credenciais-úteis)
+- [Boas práticas de contribuição](#boas-práticas-de-contribuição)
 
 ---
 
 ## Requisitos
 
-* **Node.js 20.x**
-* **PNPM 9.x**
-* **PostgreSQL** local para desenvolvimento
-
-Instalar PNPM (se ainda não tiver):
-
-```powershell
-npm i -g pnpm
-pnpm -v
-```
+- **Node.js 20.x** (LTS) – confirme com `node -v`.
+- **PNPM 9.x** – instale via `npm install -g pnpm`.
+- **PostgreSQL 14+** rodando localmente.
+- PowerShell 7+ ou terminal equivalente.
+- (Opcional para E2E) Navegadores suportados pelo Playwright.
 
 ---
 
-## Instalação
-
-Na **raiz** do repositório:
+## Clonagem e instalação
 
 ```powershell
-# instalar as dependências de todas as apps (workspaces)
+git clone <url-do-repositório>
+cd asclepius
+
+# instala dependências de todos os workspaces
 pnpm install -r
-
-# preparar variáveis de ambiente (não commitar .env)
-Copy-Item asclepius-backend\.env.example asclepius-backend\.env -Force
-
-# se houver .env.example no frontend:
-# Copy-Item asclepius-frontend\.env.example asclepius-frontend\.env -Force
 ```
+
+O projeto usa workspaces PNPM; execute os comandos sempre a partir da raiz.
 
 ---
 
-## Variáveis de ambiente
+## Configuração do backend
 
-### Backend (`asclepius-backend/.env`)
+### 1. Variáveis de ambiente
 
-Exemplo (ajuste conforme seu ambiente):
+Crie o arquivo `asclepius-backend/.env` com valores adequados. Exemplo para desenvolvimento:
 
 ```dotenv
-# Porta e ambiente
-PORT=3333
+DATABASE_URL="postgresql://asclepius_user:asclepius_2024@localhost:5432/asclepius_dev?schema=public"
+JWT_SECRET="asclepius-super-secret-key-change-in-production-min-32-chars-2024"
+PORT=3001
 NODE_ENV=development
-LOG_LEVEL=info
-
-# Postgres (ajuste usuário/senha/host/porta/database)
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/asclepius?schema=public"
-
-# JWT e outros segredos (apenas para DEV)
-JWT_SECRET=dev-secret-change-me
+CORS_ORIGIN=http://localhost:5173
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX=200
+REQUEST_ACCEPT_CAMEL=true
+RESPONSE_USE_CAMEL=true
 ```
 
-> **Importante:** mantenha **apenas** o arquivo **`.env.example`** versionado, **jamais** `.env` com segredos.
+> ⚠️ Não versionar `.env`. Ajuste os valores conforme suas credenciais locais.
 
-### Frontend (`asclepius-frontend/.env`)
+### 2. Banco de dados
 
-Se necessário, crie algo como:
+1. Crie o banco (se ainda não existir):
+   ```powershell
+   psql -U postgres -c "CREATE DATABASE asclepius_dev;"
+   ```
 
-```dotenv
-# URL da API em desenvolvimento
-VITE_API_URL=http://localhost:3333
-```
+2. Execute migrações e gere o cliente Prisma:
+   ```powershell
+   pnpm --filter asclepius-backend prisma migrate deploy
+   pnpm --filter asclepius-backend prisma generate
+   ```
+
+3. (Recomendado) Popule dados de desenvolvimento:
+   ```powershell
+   pnpm --filter asclepius-backend prisma:seed
+   ```
+   O seed cria usuários, profissionais, pacientes e um agendamento exemplo.
+
+4. (Opcional) Garantir um administrador caso personalize o seed:
+   ```powershell
+   # use ADMIN_EMAIL e ADMIN_PASSWORD ou ADMIN_PASSWORD_HASH
+   pnpm --filter asclepius-backend user:ensure-admin
+   ```
 
 ---
 
-## Banco de dados (desenvolvimento)
+## Configuração do frontend
 
-1. Garanta o PostgreSQL rodando e crie o DB (se ainda não existir):
+1. Crie o arquivo `asclepius-frontend/.env` com a URL da API:
+   ```dotenv
+   VITE_API_BASE_URL=http://localhost:3001
+   ```
 
-```powershell
-# usando psql (ajuste o usuário)
-psql -U postgres -c "CREATE DATABASE asclepius;"
-```
-
-> Caso o `psql` não esteja no PATH do Windows, adicione a pasta `...\PostgreSQL\...\bin` às variáveis de ambiente ou rode o comando a partir dela.
-
-2. Aplicar migrações Prisma:
-
-```powershell
-pnpm --filter asclepius-backend prisma migrate deploy
-# (opcional) gerar cliente
-pnpm --filter asclepius-backend prisma generate
-# (opcional) seed, se existir
-# pnpm --filter asclepius-backend prisma db seed
-```
+2. Instale os navegadores do Playwright (necessário para rodar os E2E):
+   ```powershell
+   pnpm --filter asclepius-frontend exec playwright install
+   ```
 
 ---
 
-## Scripts comuns
+## Execução em desenvolvimento
 
-> Os comandos abaixo usam **filtro** por workspace (`--filter`).
-> Se você tiver scripts específicos nos `package.json`, pode usá-los diretamente.
+Abra **dois terminais** na raiz do repositório.
 
-* **Instalar dependências (todas as apps):**
+### Backend (API)
 
-  ```powershell
-  pnpm install -r
-  ```
+```powershell
+pnpm --filter asclepius-backend dev
+# Servidor disponível em http://localhost:3001
+```
 
-* **Gerar cliente Prisma (backend):**
+### Frontend (SPA)
 
-  ```powershell
-  pnpm --filter asclepius-backend prisma generate
-  ```
+```powershell
+pnpm --filter asclepius-frontend dev
+# Aplicação em http://localhost:5173
+```
 
-* **Executar migrações (backend):**
-
-  ```powershell
-  pnpm --filter asclepius-backend prisma migrate deploy
-  ```
+Qualquer alteração em `src/` gera hot reload.
 
 ---
 
-## Testes
-
-### Executar tudo (monorepo)
-
-```powershell
-pnpm -r test
-```
+## Testes automatizados
 
 ### Backend
 
@@ -160,79 +137,51 @@ pnpm -r test
 pnpm --filter asclepius-backend test
 ```
 
-### Frontend
+### Frontend – Playwright E2E
 
-Instalar navegadores do Playwright (se aplicável):
-
-```powershell
-pnpm --filter asclepius-frontend exec playwright install
-```
-
-Rodar testes:
+Os testes autenticam via `/auth/login`. Utilize as credenciais seeds ou defina as suas via variáveis de ambiente.
 
 ```powershell
-pnpm --filter asclepius-frontend test
-# ou test:e2e / test:ui, conforme seu package.json
+$env:E2E_AUTH_EMAIL = 'admin@vidaplus.com'
+$env:E2E_AUTH_PASSWORD = 'VidaPlus@2025'
+pnpm --filter asclepius-frontend test:e2e
 ```
+
+Variáveis reconhecidas:
+
+- `E2E_AUTH_EMAIL` – e-mail usado no login.
+- `E2E_AUTH_PASSWORD` – senha usada no login.
+- `E2E_API_BASE_URL` – opcional (padrão `http://localhost:3001`).
+
+Outros scripts úteis:
+
+- `pnpm --filter asclepius-backend build` – transpila o backend para `dist/`.
+- `pnpm --filter asclepius-frontend build` – gera bundle de produção.
+- `pnpm install -r` – reinstala dependências em todos os workspaces.
 
 ---
 
-## Build
+## Usuários seeds e credenciais úteis
 
-### Tudo (monorepo)
+Após rodar `prisma:seed`, os usuários abaixo são criados:
 
-```powershell
-pnpm -r build
-```
+| Função      | E-mail                 | Senha          |
+|-------------|------------------------|----------------|
+| Admin       | `admin@vidaplus.com`   | `VidaPlus@2025`|
+| Médico(a)   | `dra.ana@vidaplus.com` | `senha123`     |
+| Enfermeiro  | `enf.carlos@vidaplus.com` | `senha123` |
 
-### Por app
-
-```powershell
-pnpm --filter asclepius-backend build
-pnpm --filter asclepius-frontend build
-```
-
-> Artefatos de build **não** devem ser commitados (o `.gitignore` já cobre `dist/`, `build/`, etc.).
+Essas credenciais são reaproveitadas pelos testes E2E.
 
 ---
 
-## Execução (dev)
+## Boas práticas de contribuição
 
-Em **terminais separados**:
-
-```powershell
-# Backend (API)
-pnpm --filter asclepius-backend dev
-# API em http://localhost:3333 (ajuste via PORT no .env)
-
-# Frontend (Vite)
-pnpm --filter asclepius-frontend dev
-# App em http://localhost:5173 (porta padrão do Vite)
-```
+- Trabalhe em branches (`feat/...`, `fix/...`, `chore/...`) e abra Pull Requests.
+- Não versione arquivos sensíveis ou gerados (`.env`, `dist/`, `playwright-report/`, `test-results/`, etc.).
+- Execute migrações e testes antes de abrir PRs relevantes.
+- Atualize este README sempre que o processo de setup mudar.
 
 ---
 
-## Git: commit & push
-
-Após editar este README:
-
-```powershell
-git add README.md
-git commit -m "docs: README raiz com instruções de setup/dev/test/build"
-git push
-```
-
----
-
-## Boas práticas
-
-* **Nunca** commitar `.env`, chaves, tokens ou senhas. Use `.env.example`.
-* Mantenha **migrações** do Prisma versionadas (úteis para CI/CD e novos devs).
-* Use **branches** para features: `feat/...`, `fix/...`, `chore/...`.
-* Considere habilitar **Branch Protection** e **CI** (GitHub Actions) para manter a `main` sempre verde.
-
----
-
-## Licença
-
-Defina aqui a licença do projeto (ex.: MIT).
+Pronto! Com esses passos qualquer pessoa consegue clonar o projeto, configurar ambiente, rodar o backend/frontend e executar os testes E2E autenticados.
