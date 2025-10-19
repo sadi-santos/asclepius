@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type FormEvent, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, getErrorMessage } from "../../lib/api";
@@ -15,11 +15,17 @@ type FormModel = Omit<Patient, "id" | "cpf" | "birthDate"> & {
 function toDateInput(iso?: string) {
   return iso ? new Date(iso).toISOString().slice(0, 10) : "";
 }
-function toISODateAt00Z(yyyy_mm_dd: string) {
-  if (!yyyy_mm_dd) return new Date().toISOString();
-  const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
+
+function toISODateAt00Z(yyyyMmDd: string) {
+  if (!yyyyMmDd) return new Date().toISOString();
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
   const dt = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0);
   return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString();
+}
+
+function toNullableString(value?: string | null) {
+  const trimmed = (value ?? "").trim();
+  return trimmed ? trimmed : null;
 }
 
 export default function PatientForm() {
@@ -67,31 +73,42 @@ export default function PatientForm() {
 
   const [form, setForm] = useState<FormModel>(initial);
   const [cpfError, setCpfError] = useState<string>("");
+  const originalCpfRef = useRef<string>("");
 
   useEffect(() => {
-    setForm((prev) => ({ ...prev, ...initial, cpf: onlyDigits(initial.cpf) }));
+    const sanitized = { ...initial, cpf: onlyDigits(initial.cpf) };
+    setForm((prev) => ({ ...prev, ...sanitized }));
+    originalCpfRef.current = sanitized.cpf;
     setCpfError("");
   }, [initial]);
 
-  const save = useMutation({
-    mutationFn: async (payload: FormModel) => {
-      const cpfDigits = onlyDigits(payload.cpf);
-      const body = {
-        fullName: payload.fullName,
-        cpf: cpfDigits,
+  type SaveInput = { form: FormModel; cpfDigits: string; cpfAlterado: boolean };
+
+  const save = useMutation<Patient, unknown, SaveInput>({
+    mutationFn: async ({ form: payload, cpfDigits, cpfAlterado }) => {
+      const body: Record<string, unknown> = {
+        fullName: payload.fullName.trim(),
         birthDate: toISODateAt00Z(payload.birthDate),
-        email: payload.email || null,
-        phone: payload.phone || null,
-        address: payload.address || null,
-        bloodType: payload.bloodType || null,
-        allergies: payload.allergies || null,
-        notes: payload.notes || null,
+        email: toNullableString(payload.email),
+        phone: toNullableString(payload.phone),
+        address: toNullableString(payload.address),
+        bloodType: toNullableString(payload.bloodType),
+        allergies: toNullableString(payload.allergies),
+        notes: toNullableString(payload.notes),
         isActive: !!payload.isActive,
       };
-      if (payload.id) {
-        return (await api.put<Patient>(`/patients/${payload.id}`, body)).data;
+
+      if (!isEdit || cpfAlterado) {
+        body.cpf = cpfDigits;
       }
-      return (await api.post<Patient>(`/patients`, body)).data;
+
+      if (isEdit) {
+        const targetId = payload.id ?? id;
+        if (!targetId) throw new Error("Paciente sem identificador");
+        return (await api.patch<Patient>(`/patients/${targetId}`, body)).data;
+      }
+
+      return (await api.post<Patient>("/patients", body)).data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["patients"] });
@@ -103,10 +120,10 @@ export default function PatientForm() {
   const onChange =
     (field: keyof FormModel) =>
     (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const t = e.target as HTMLInputElement;
-      const value = t.type === "checkbox" ? t.checked : t.value;
-      setForm((f) => ({
-        ...f,
+      const input = e.target as HTMLInputElement;
+      const value = input.type === "checkbox" ? input.checked : input.value;
+      setForm((prev) => ({
+        ...prev,
         [field]: field === "cpf" ? onlyDigits(String(value)).slice(0, 11) : (value as any),
       }));
       if (field === "cpf") setCpfError("");
@@ -115,20 +132,23 @@ export default function PatientForm() {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     const cpfDigits = onlyDigits(form.cpf);
-    if (!validateCPF(cpfDigits)) {
+    const originalCpfDigits = originalCpfRef.current;
+    const cpfAlterado = !isEdit || cpfDigits !== originalCpfDigits;
+    if (cpfAlterado && !validateCPF(cpfDigits)) {
       setCpfError("CPF inválido");
       return;
     }
-    save.mutate({ ...form, cpf: cpfDigits });
+    save.mutate({ form, cpfDigits, cpfAlterado });
   };
 
   if (isEdit && isLoading) {
     return (
       <div className="p-8 flex items-center gap-3 text-slate-600">
-        <Loader2 className="animate-spin" size={20} /> Carregando paciente…
+        <Loader2 className="animate-spin" size={20} /> Carregando paciente.
       </div>
     );
   }
+
   if (isEdit && isError) {
     return (
       <div className="p-8 text-rose-600">
@@ -165,7 +185,9 @@ export default function PatientForm() {
           </div>
 
           <div>
-            <label htmlFor="cpf" className="block text-sm text-slate-700 mb-1">CPF *</label>
+            <label htmlFor="cpf" className="block text-sm text-slate-700 mb-1">
+              CPF *
+            </label>
             <input
               id="cpf"
               className={`w-full rounded-lg px-3 py-2 outline-none border ${cpfError ? "border-rose-400" : "border-slate-300"} focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
@@ -269,7 +291,9 @@ export default function PatientForm() {
               onChange={onChange("isActive")}
               disabled={save.isPending}
             />
-            <label htmlFor="isActive" className="text-sm text-slate-700">Cadastro ativo</label>
+            <label htmlFor="isActive" className="text-sm text-slate-700">
+              Cadastro ativo
+            </label>
           </div>
 
           <div className="md:col-span-2 flex justify-end gap-3 mt-2">
@@ -296,3 +320,4 @@ export default function PatientForm() {
     </div>
   );
 }
+
