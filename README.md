@@ -1,6 +1,6 @@
 # Asclepius (VidaPlus)
 
-Monorepo do sistema hospitalar **Asclepius**, composto por:
+Monorepo do sistema hospitalar **Asclepius**, versão em ambiente de desenvolvimento, composto por:
 
 - **asclepius-backend** – API REST em Node.js/TypeScript, Prisma ORM e PostgreSQL.
 - **asclepius-frontend** – SPA em React (Vite + Tailwind) com testes end-to-end em Playwright.
