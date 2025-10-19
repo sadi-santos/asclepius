@@ -1,4 +1,4 @@
-name: CI (minimal pnpm)
+name: CI
 
 on:
   push:
@@ -10,33 +10,27 @@ on:
 jobs:
   test-build:
     runs-on: ubuntu-latest
-    env:
-      CI: true
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-          submodules: false
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+          # sem cache aqui para não exigir pnpm instalado
 
-      - name: Install PNPM 10.18.2 globally
+      - name: Enable Corepack + PNPM 10.18.2
         run: |
-          npm i -g pnpm@10.18.2
+          corepack enable
+          corepack prepare pnpm@10.18.2 --activate
           pnpm -v
-          node -v
-          npm -v
 
       - name: Install deps (workspace)
         run: pnpm install -r --frozen-lockfile
 
+      # ---------- BACKEND ----------
       - name: Prisma generate (backend)
         run: pnpm --filter "./asclepius-backend" exec prisma generate
 
@@ -45,3 +39,10 @@ jobs:
 
       - name: Test (backend)
         run: pnpm --filter "./asclepius-backend" run test
+
+      # ---------- FRONTEND (opcional) ----------
+      - name: Build (frontend, if-present)
+        run: pnpm --filter "./asclepius-frontend" run --if-present build
+
+      - name: Test (frontend, if-present)
+        run: pnpm --filter "./asclepius-frontend" run --if-present test
