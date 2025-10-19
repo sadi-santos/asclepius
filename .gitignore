@@ -19,3 +19,4 @@ test-results/
 
 node_modules/
 **/node_modules/
+`nscripts/_diagnose-*.json

@@ -184,4 +184,4 @@ Essas credenciais são reaproveitadas pelos testes E2E.
 
 ---
 
-Pronto! Com esses passos qualquer pessoa consegue clonar o projeto, configurar ambiente, rodar o backend/frontend e executar os testes E2E autenticados.
+

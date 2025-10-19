@@ -10,10 +10,23 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
-    "types": ["node", "vite/client", "@playwright/test", "react", "react-dom"],
+
+    /* Tipos globais:
+       - Vitest (unit): habilita describe/it/expect no TS
+       - NÃO incluir @playwright/test aqui para evitar conflito;
+         nos E2E importamos { test, expect } diretamente do Playwright.
+    */
+    "types": ["node", "vite/client", "vitest/globals", "react", "react-dom"],
+
     "strict": true
   },
-  "include": ["src", "tests", "playwright.config.ts", "vite.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "src/vitest-env.d.ts"
+  ]
 }

@@ -1,6 +1,13 @@
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
+
 export default defineConfig({
-  plugins: [react()],
-  test: { globals: true, environment: "jsdom", coverage: { provider: "v8", reporter: ["text","lcov"] } }
+  plugins: [react(), tsconfigPaths()],
+  test: {
+    globals: true,            // habilita describe/it/expect sem importar
+    environment: 'jsdom',     // para componentes/DOM
+    include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
+    css: false
+  }
 });
