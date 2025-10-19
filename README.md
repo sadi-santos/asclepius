@@ -46,20 +46,20 @@ O projeto usa workspaces PNPM; execute os comandos sempre a partir da raiz.
 
 ---
 
-## Instala��o automatizada
+## Instalação automatizada
 
-O reposit�rio inclui o script `scripts/install.ps1` para provisionar depend�ncias, arquivos `.env` padr�o e (opcionalmente) o banco via Prisma.
+O repositório inclui o script `scripts/install.ps1` para provisionar dependências, arquivos `.env` padrão e (opcionalmente) o banco via Prisma.
 
 ```powershell
 pwsh ./scripts/install.ps1
 ```
 
-Par�metros �teis:
+Parâmetros úteis:
 
-- `-SkipDatabaseTasks` &mdash; pula migra��es, generate e seed (�til quando o PostgreSQL ainda n�o est� acess�vel).
-- `-SkipSeeds` &mdash; executa migra��es e generate, mas evita rodar o seed.
+- `-SkipDatabaseTasks` &mdash; pula migrações, generate e seed (útil quando o PostgreSQL ainda não está acessível).
+- `-SkipSeeds` &mdash; executa migrações e generate, mas evita rodar o seed.
 
-> O script valida Node.js 20+, PNPM e cria `.env` iniciais se eles ainda n�o existirem. Ajuste as credenciais geradas antes de usar em produ��o.
+> O script valida Node.js 20+, PNPM e cria `.env` iniciais se eles ainda não existirem. Ajuste as credenciais geradas antes de usar em produção.
 
 ---
 
