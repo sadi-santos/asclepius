@@ -17,6 +17,7 @@ As instruções a seguir são baseadas em **Windows/PowerShell**, mas funcionam 
 - [Configuração do frontend](#configuração-do-frontend)
 - [Execução em desenvolvimento](#execução-em-desenvolvimento)
 - [Testes automatizados](#testes-automatizados)
+- [Documentacao da API](#documentacao-da-api)
 - [Usuários seeds e credenciais úteis](#usuários-seeds-e-credenciais-úteis)
 - [Boas práticas de contribuição](#boas-práticas-de-contribuição)
 
@@ -177,6 +178,50 @@ Outros scripts úteis:
 - `pnpm --filter asclepius-backend build` – transpila o backend para `dist/`.
 - `pnpm --filter asclepius-frontend build` – gera bundle de produção.
 - `pnpm install -r` – reinstala dependências em todos os workspaces.
+
+---
+
+## Documentacao da API
+
+O arquivo [API_ENDPOINTS.md](API_ENDPOINTS.md) concentra a documentacao detalhada exigida para os endpoints REST do backend. Cada rota traz, no minimo:
+
+- Metodo HTTP (GET, POST, PUT, PATCH ou DELETE) e a URL completa.
+- Objetivo/descricao de negocio para orientar o uso correto.
+- Estrutura dos parametros (`query`, `path`) e payloads JSON aceitos.
+- Respostas esperadas com exemplos em JSON e respectivos codigos HTTP.
+
+Todos os exemplos consideram autenticacao JWT e refletem o contrato camelCase exibido no Swagger (`/docs`). Atualize este arquivo sempre que um endpoint for criado/alterado para manter o time alinhado.
+
+Exemplo retirado da documentacao:
+
+- Endpoint: `GET /patients`
+- Objetivo: listar todos os pacientes cadastrados com paginacao.
+- Resposta 200:
+  ```json
+  {
+    "page": 1,
+    "size": 20,
+    "total": 54,
+    "totalPages": 3,
+    "items": [
+      {
+        "id": "8f4d6bb3-e6cd-4a35-928e-d1c93691f3aa",
+        "fullName": "Ana Costa",
+        "cpf": "12345678901",
+        "birthDate": "1995-04-01T00:00:00.000Z",
+        "email": "ana@example.com",
+        "phone": "5511999999999",
+        "address": "Rua A, 100",
+        "bloodType": "A+",
+        "allergies": null,
+        "notes": null,
+        "isActive": true,
+        "createdAt": "2025-10-18T14:10:33.000Z",
+        "updatedAt": "2025-10-18T14:10:33.000Z"
+      }
+    ]
+  }
+  ```
 
 ---
 
